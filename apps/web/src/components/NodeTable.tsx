@@ -46,7 +46,7 @@ export function NodeTable({ nodes }: Props) {
                   {truncateNodeId(node.node_id)}
                 </td>
                 <td className="py-2 pr-4 text-xs text-gray-400 max-w-40 truncate">
-                  {node.uri.replace('https://', '')}
+                  <span className="text-gray-600 italic">[redacted]</span>
                 </td>
                 <td className="py-2 pr-4">
                   <span

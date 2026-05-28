@@ -113,7 +113,7 @@ export function RingVisualization({ nodes }: Props) {
                 {node.node_id.slice(0, 22)}…
               </text>
               <text x={tx + 10} y={ty + 34} fontSize={9} fill="#9ca3af">
-                {node.uri.replace('https://', '').slice(0, 32)}
+                [redacted]
               </text>
               <text x={tx + 10} y={ty + 50} fontSize={9} fill={color}>
                 {node.status}
