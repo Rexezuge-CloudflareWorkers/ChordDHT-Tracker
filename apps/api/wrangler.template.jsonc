@@ -33,5 +33,6 @@
   "vars": {
     "MAX_NODES": "1000",
     "STALE_THRESHOLD_SECONDS": "180",
+    "SERVE_SPA_FROM_WORKER": "false",
   },
 }

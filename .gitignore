@@ -1,6 +1,9 @@
 wrangler.jsonc
 worker-configuration.d.ts
 
+# Generated source
+apps/api/src/generated/
+
 # Local only
 local/
 

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "postinstall": "pnpm run typegen",
+    "postinstall": "node scripts/ensure-spa-shell-stub.mjs && pnpm run typegen",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.json",
     "test": "vitest run",

@@ -4,7 +4,7 @@ import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
   {
-    ignores: ['apps/web/dist/**', 'worker-configuration.d.ts', '**/node_modules/**'],
+    ignores: ['apps/web/dist/**', 'apps/api/src/generated/**', 'worker-configuration.d.ts', '**/node_modules/**'],
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts,tsx}'],
