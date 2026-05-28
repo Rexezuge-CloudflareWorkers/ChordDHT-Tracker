@@ -8,6 +8,8 @@ import { applyEdits, modify, parse } from 'jsonc-parser';
 const CONFIG_PATH = join(process.cwd(), 'wrangler.jsonc');
 const TEMPLATE_PATH = join(process.cwd(), 'apps/api/wrangler.template.jsonc');
 const DEFAULT_UUID = '00000000-0000-0000-0000-000000000000';
+const DEFAULT_HEX_ID = '00000000000000000000000000000000';
+const DEFAULT_SECRET_STORE_NAME = 'default';
 
 interface WranglerConfig {
   d1_databases?: Array<{
@@ -15,6 +17,16 @@ interface WranglerConfig {
     database_id?: string;
     database_name?: string;
   }>;
+  secrets_store_secrets?: Array<{
+    binding?: string;
+    store_id?: string;
+    secret_name?: string;
+  }>;
+}
+
+interface SecretStore {
+  name: string;
+  id: string;
 }
 
 interface D1DatabaseRecord {
@@ -86,9 +98,50 @@ function prepareConfigFile(): void {
   console.log('Copied apps/api/wrangler.template.jsonc → wrangler.jsonc.');
 }
 
+function parseSecretStoresTable(output: string): SecretStore[] {
+  const stores: SecretStore[] = [];
+  for (const line of output.split('\n')) {
+    if (!line.includes('│')) continue;
+    const cells = line
+      .split('│')
+      .map((cell) => cell.trim())
+      .filter(Boolean);
+    if (cells.length < 2 || cells[0] === 'Name' || cells[0].includes('─')) continue;
+    const [name, id] = cells;
+    if (/^[a-f0-9]{32}$/i.test(id)) stores.push({ name, id });
+  }
+  return stores;
+}
+
+function listSecretStores(): SecretStore[] {
+  const output = runWrangler(['secrets-store', 'store', 'list', '--remote']);
+  try {
+    return parseJsonArray<SecretStore>(output, 'wrangler secrets-store store list --remote');
+  } catch {
+    return parseSecretStoresTable(output);
+  }
+}
+
+function ensureSecretStore(): string {
+  let stores = listSecretStores();
+  if (stores.length > 0) {
+    const store = stores.find((s) => s.name === DEFAULT_SECRET_STORE_NAME) ?? stores[0];
+    return store.id;
+  }
+
+  console.log(`Creating Secrets Store: ${DEFAULT_SECRET_STORE_NAME}`);
+  const output = runWrangler(['secrets-store', 'store', 'create', DEFAULT_SECRET_STORE_NAME, '--remote']);
+  const createdId = output.match(/ID:\s*([a-f0-9]{32})/i)?.[1];
+  if (createdId) return createdId;
+
+  stores = listSecretStores();
+  const store = stores.find((s) => s.name === DEFAULT_SECRET_STORE_NAME) ?? stores[0];
+  if (!store?.id) throw new Error(`Unable to discover Secrets Store ID for "${DEFAULT_SECRET_STORE_NAME}".`);
+  return store.id;
+}
+
 function provisionResources(): void {
-  const { config, content: rawContent } = readConfig();
-  let content = rawContent;
+  let { config, content } = readConfig();
 
   for (const [index, database] of config.d1_databases?.entries() ?? []) {
     if (database.database_id !== DEFAULT_UUID) continue;
@@ -99,6 +152,18 @@ function provisionResources(): void {
     const id = ensureD1Database(database.database_name);
     console.log(`Using D1 database "${database.database_name}": ${id}`);
     content = writeConfigValue(content, ['d1_databases', index, 'database_id'], id);
+  }
+
+  config = parse(content) as WranglerConfig;
+  const pendingStoreIndexes = (config.secrets_store_secrets ?? [])
+    .map((secret, index) => ({ secret, index }))
+    .filter(({ secret }) => secret.store_id === DEFAULT_HEX_ID);
+  if (pendingStoreIndexes.length > 0) {
+    const storeId = ensureSecretStore();
+    console.log(`Using Secrets Store: ${storeId}`);
+    for (const { index } of pendingStoreIndexes) {
+      content = writeConfigValue(content, ['secrets_store_secrets', index, 'store_id'], storeId);
+    }
   }
 
   writeFileSync(CONFIG_PATH, content.endsWith('\n') ? content : `${content}\n`);
