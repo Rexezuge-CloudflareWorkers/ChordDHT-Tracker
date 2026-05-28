@@ -1,0 +1,9 @@
+ALTER TABLE nodes ADD COLUMN cert_json TEXT;
+ALTER TABLE nodes ADD COLUMN cert_expires_at INTEGER;
+
+CREATE TABLE IF NOT EXISTS crl (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  version    INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  crl_json   TEXT    NOT NULL
+);

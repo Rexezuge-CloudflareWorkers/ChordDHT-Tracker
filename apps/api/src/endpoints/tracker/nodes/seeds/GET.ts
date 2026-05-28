@@ -16,26 +16,44 @@ class NodesSeedsGetRoute extends IBaseRoute {
       .map((id) => id.trim())
       .filter((id) => NODE_ID_REGEX.test(id));
 
+    const includeCert = c.req.query('include_cert') === 'true';
+
     const staleThresholdSecs = getStaleThresholdSecs(c.env);
     const cutoff = new Date(Date.now() - staleThresholdSecs * 1000).toISOString();
 
-    let seeds: NodeInfo[];
+    const selectCols = includeCert ? 'node_id, uri, cert_json' : 'node_id, uri';
+
+    type SeedRow = { node_id: string; uri: string; cert_json?: string | null };
+
+    let rows: SeedRow[];
     if (excludeIds.length > 0) {
       const placeholders = excludeIds.map(() => '?').join(', ');
       const { results } = await c.env.DB.prepare(
-        `SELECT node_id, uri FROM nodes WHERE last_seen >= ? AND node_id NOT IN (${placeholders}) ORDER BY RANDOM() LIMIT ?`,
+        `SELECT ${selectCols} FROM nodes WHERE last_seen >= ? AND node_id NOT IN (${placeholders}) ORDER BY RANDOM() LIMIT ?`,
       )
         .bind(cutoff, ...excludeIds, count)
-        .all<NodeInfo>();
-      seeds = results;
+        .all<SeedRow>();
+      rows = results;
     } else {
       const { results } = await c.env.DB.prepare(
-        `SELECT node_id, uri FROM nodes WHERE last_seen >= ? ORDER BY RANDOM() LIMIT ?`,
+        `SELECT ${selectCols} FROM nodes WHERE last_seen >= ? ORDER BY RANDOM() LIMIT ?`,
       )
         .bind(cutoff, count)
-        .all<NodeInfo>();
-      seeds = results;
+        .all<SeedRow>();
+      rows = results;
     }
+
+    const seeds: NodeInfo[] = rows.map((row) => {
+      const seed: NodeInfo = { node_id: row.node_id, uri: row.uri };
+      if (includeCert && row.cert_json) {
+        try {
+          seed.certificate = JSON.parse(row.cert_json);
+        } catch {
+          // Skip malformed cert
+        }
+      }
+      return seed;
+    });
 
     const countResult = await c.env.DB.prepare('SELECT COUNT(*) as count FROM nodes').first<{ count: number }>();
 

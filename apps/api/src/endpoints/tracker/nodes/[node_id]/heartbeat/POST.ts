@@ -36,6 +36,7 @@ class NodeHeartbeatPostRoute extends IBaseRoute {
          finger_table_coverage = ?,
          uptime_seconds        = ?,
          maintenance_cycles    = ?,
+         cert_expires_at       = COALESCE(?, cert_expires_at),
          report_count          = report_count + 1
        WHERE node_id = ?`,
     )
@@ -48,6 +49,7 @@ class NodeHeartbeatPostRoute extends IBaseRoute {
         body.finger_table_coverage ?? null,
         body.uptime_seconds ?? null,
         body.maintenance_cycles ?? null,
+        body.cert_expires_at ?? null,
         node_id,
       )
       .run();

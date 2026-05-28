@@ -1,3 +1,19 @@
+import { importEd25519PublicKey } from '@/auth';
+
+// Module-level cache: survives within a Worker isolate lifetime.
+let cachedCAKey: CryptoKey | null = null;
+let cachedCAKeyBase64: string | null = null;
+
+// getCAPublicKey imports and caches the CA Ed25519 public key from env.
+export async function getCAPublicKey(env: Env): Promise<CryptoKey | null> {
+  const b64 = (env as unknown as { CA_PUBLIC_KEY_BASE64?: string }).CA_PUBLIC_KEY_BASE64;
+  if (!b64) return null;
+  if (cachedCAKey && cachedCAKeyBase64 === b64) return cachedCAKey;
+  cachedCAKey = await importEd25519PublicKey(b64);
+  cachedCAKeyBase64 = b64;
+  return cachedCAKey;
+}
+
 export function getMaxNodes(env: Env): number {
   return parseInt(env.MAX_NODES, 10);
 }
