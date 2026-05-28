@@ -4,6 +4,10 @@ A Cloudflare Worker that acts as the centralized bootstrap and health-monitoring
 
 > **Learning system** — designed for studying the Chord protocol. Not suitable for production use: no TLS between nodes, no authentication, no NAT traversal.
 
+## Sister Project
+
+[**ChordDHT**](https://github.com/Rexezuge-DockerUtils/ChordDHT) — the Go node implementation that joins a Chord ring and uses this Tracker for bootstrapping and heartbeats.
+
 ## Architecture
 
 ```
