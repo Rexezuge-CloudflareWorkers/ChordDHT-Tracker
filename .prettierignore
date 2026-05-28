@@ -1,0 +1,4 @@
+node_modules/
+apps/web/dist/
+worker-configuration.d.ts
+pnpm-lock.yaml

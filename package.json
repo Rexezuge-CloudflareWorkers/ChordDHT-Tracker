@@ -1,0 +1,33 @@
+{
+  "name": "@chord-dht-tracker/monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "pnpm run typegen",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint --fix .",
+    "prettier": "prettier --write .",
+    "checks": "pnpm -r typecheck && pnpm run lint && pnpm run test",
+    "dev": "wrangler dev --config apps/api/wrangler.template.jsonc",
+    "deploy": "pnpm run build && wrangler deploy",
+    "typegen": "wrangler types --config ./apps/api/wrangler.template.jsonc --env-interface CloudflareEnv",
+    "migrate:local": "wrangler d1 migrations apply chord-dht-tracker-db --local --config apps/api/wrangler.template.jsonc",
+    "migrate:remote": "wrangler d1 migrations apply chord-dht-tracker-db --remote"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "eslint": "^10.4.0",
+    "globals": "^17.6.0",
+    "hono": "^4.12.23",
+    "jsonc-parser": "^3.3.1",
+    "prettier": "^3.8.3",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.0",
+    "vitest": "^4.1.7",
+    "wrangler": "^4.95.0"
+  },
+  "packageManager": "pnpm@11.2.2"
+}
