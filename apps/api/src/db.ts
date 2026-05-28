@@ -4,14 +4,19 @@ import { importEd25519PublicKey } from '@/auth';
 let cachedCAKey: CryptoKey | null = null;
 let cachedCAKeyBase64: string | null = null;
 
-// getCAPublicKey imports and caches the CA Ed25519 public key from env.
+// getCAPublicKey imports and caches the CA Ed25519 public key from the Secrets Store.
+// Returns null if the secret is absent, unconfigured (placeholder), or not a valid Ed25519 key.
 export async function getCAPublicKey(env: Env): Promise<CryptoKey | null> {
-  const b64 = (env as unknown as { CA_PUBLIC_KEY_BASE64?: string }).CA_PUBLIC_KEY_BASE64;
-  if (!b64) return null;
-  if (cachedCAKey && cachedCAKeyBase64 === b64) return cachedCAKey;
-  cachedCAKey = await importEd25519PublicKey(b64);
-  cachedCAKeyBase64 = b64;
-  return cachedCAKey;
+  try {
+    const b64 = await env.CA_PUBLIC_KEY_BASE64.get();
+    if (!b64) return null;
+    if (cachedCAKey && cachedCAKeyBase64 === b64) return cachedCAKey;
+    cachedCAKey = await importEd25519PublicKey(b64);
+    cachedCAKeyBase64 = b64;
+    return cachedCAKey;
+  } catch {
+    return null;
+  }
 }
 
 export function getMaxNodes(env: Env): number {

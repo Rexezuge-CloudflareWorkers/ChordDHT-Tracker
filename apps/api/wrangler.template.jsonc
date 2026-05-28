@@ -43,12 +43,18 @@
       },
     },
   ],
+  "secrets_store_secrets": [
+    {
+      "binding": "CA_PUBLIC_KEY_BASE64",
+      "store_id": "00000000000000000000000000000000",
+      // base64url Ed25519 CA public key (32 bytes). Update via Cloudflare dashboard or:
+      // wrangler secrets-store secret create <store_id> --name chord-dht-tracker-ca-public-key --scopes workers --remote
+      "secret_name": "chord-dht-tracker-ca-public-key",
+    },
+  ],
   "vars": {
     "MAX_NODES": "1000",
     "STALE_THRESHOLD_SECONDS": "180",
     "SERVE_SPA_FROM_WORKER": "false",
-    // Set via `wrangler secret put CA_PUBLIC_KEY_BASE64` — base64url Ed25519 CA public key (32 bytes).
-    // Leave empty here; configure per-environment via Cloudflare dashboard or wrangler secrets.
-    "CA_PUBLIC_KEY_BASE64": "",
   },
 }
