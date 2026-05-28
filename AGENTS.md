@@ -111,3 +111,6 @@ Node IDs must be 40-character lowercase hexadecimal strings (SHA-1 hash). The re
 - When creating a commit from `main`, first switch to a new branch generated from the planned commit subject.
 - Use lowercase slash-separated branch names: `type/description` or `type/scope/description`.
 - Use Markdown for optional commit bodies, separated from the subject by a blank line.
+- When creating a commit from `main`, first switch to a new branch generated from the planned commit subject.
+- Use lowercase slash-separated branch names: `type/description` when there is no scope, or `type/scope/description` when there is a scope.
+- Convert the description to kebab-case for the branch, for example `docs/latest-agents-context-reflection`, `docs/agents/document-commit-standard`, or `feat/bootstrap/bootstrap-jqanywhere-v0.1-framework`.
