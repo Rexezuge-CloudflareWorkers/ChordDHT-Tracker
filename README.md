@@ -8,6 +8,8 @@ A Cloudflare Worker that acts as the centralized bootstrap and health-monitoring
 
 [**ChordDHT**](https://github.com/Rexezuge-DockerUtils/ChordDHT) — the Go node implementation that joins a Chord ring and uses this Tracker for bootstrapping and heartbeats.
 
+[**ChordDHT-Design**](https://github.com/Rexezuge-Gists/ChordDHT-Design) — design documentation for the ChordDHT system.
+
 ## Architecture
 
 ```
