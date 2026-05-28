@@ -12,6 +12,11 @@ class NodeHeartbeatPostRoute extends IBaseRoute {
       return errorResponse('INVALID_REQUEST', 'node_id must be a 40-character lowercase hex string', 400);
     }
 
+    const { success } = await c.env.NODE_RATE_LIMITER.limit({ key: node_id });
+    if (!success) {
+      return errorResponse('RATE_LIMITED', 'Rate limit exceeded for this node', 429);
+    }
+
     let body: HeartbeatBody = {};
     try {
       body = await c.req.json<HeartbeatBody>();

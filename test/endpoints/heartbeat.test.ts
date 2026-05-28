@@ -79,4 +79,18 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe('INVALID_REQUEST');
   });
+
+  it('returns 429 when rate limit is exceeded', async () => {
+    const db = createD1();
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(HEARTBEAT_URL, { method: 'POST' }),
+      createEnv(db, false),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe('RATE_LIMITED');
+  });
 });

@@ -22,6 +22,11 @@ class NodesPostRoute extends IBaseRoute {
       return errorResponse('INVALID_REQUEST', 'uri must start with https://', 400);
     }
 
+    const { success } = await c.env.NODE_RATE_LIMITER.limit({ key: node_id });
+    if (!success) {
+      return errorResponse('RATE_LIMITED', 'Rate limit exceeded for this node', 429);
+    }
+
     const now = new Date().toISOString();
     await c.env.DB.prepare(
       `INSERT INTO nodes (node_id, uri, joined_at, last_seen)
