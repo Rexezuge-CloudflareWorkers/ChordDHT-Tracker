@@ -116,6 +116,24 @@ describe('POST /tracker/nodes', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('returns 429 when rate limit is exceeded', async () => {
+    const db = createD1();
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request('http://localhost/tracker/nodes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id: VALID_NODE_ID, uri: VALID_URI }),
+      }),
+      createEnv(db, false),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe('RATE_LIMITED');
+  });
 });
 
 // ─── DELETE /tracker/nodes/:node_id ──────────────────────────────────────────
