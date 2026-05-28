@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import app from '../../apps/api/src/index';
+import { ChordDHTTrackerWorker } from '@/workers';
 import { createD1, createStmt } from '../mocks/d1';
 import { createEnv } from '../mocks/env';
 
@@ -11,7 +11,8 @@ describe('GET /tracker/health', () => {
       createStmt({ firstResult: { value: startedAt } }), // SELECT started_at
     );
 
-    const res = await app.fetch(new Request('http://localhost/tracker/health'), createEnv(db), {} as ExecutionContext);
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(new Request('http://localhost/tracker/health'), createEnv(db), {} as ExecutionContext);
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { status: string; uptime_seconds: number; timestamp: string };

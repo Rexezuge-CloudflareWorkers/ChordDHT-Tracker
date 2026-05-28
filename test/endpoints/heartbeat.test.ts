@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import app from '../../apps/api/src/index';
+import { ChordDHTTrackerWorker } from '@/workers';
 import { createD1, createStmt } from '../mocks/d1';
 import { createEnv } from '../mocks/env';
 
@@ -19,7 +19,8 @@ const validBody = {
 describe('POST /tracker/nodes/:node_id/heartbeat', () => {
   it('acknowledges a valid heartbeat and returns tracker_time', async () => {
     const db = createD1(createStmt({ changes: 1 }));
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request(HEARTBEAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,7 +38,8 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
 
   it('accepts a heartbeat with an empty body', async () => {
     const db = createD1(createStmt({ changes: 1 }));
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request(HEARTBEAT_URL, { method: 'POST' }),
       createEnv(db),
       {} as ExecutionContext,
@@ -48,7 +50,8 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
 
   it('returns 404 when node is not registered', async () => {
     const db = createD1(createStmt({ changes: 0 }));
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request(HEARTBEAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,7 +68,8 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
 
   it('returns 400 for an invalid node_id format', async () => {
     const db = createD1();
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes/not-a-valid-id/heartbeat', { method: 'POST' }),
       createEnv(db),
       {} as ExecutionContext,

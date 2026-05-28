@@ -1,14 +1,9 @@
-import { Hono } from 'hono';
-import { nodesRoute } from './routes/nodes';
-import { heartbeatRoute } from './routes/heartbeat';
-import { statsRoute } from './routes/stats';
-import { healthRoute } from './routes/health';
+import { ChordDHTTrackerWorker } from '@/workers';
 
-const app = new Hono<{ Bindings: Env }>();
+const worker = new ChordDHTTrackerWorker();
 
-app.route('/tracker/nodes', nodesRoute);
-app.route('/tracker/nodes', heartbeatRoute);
-app.route('/tracker', statsRoute);
-app.route('/tracker', healthRoute);
-
-export default app;
+export default {
+  fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    return worker.fetch(request, env, ctx);
+  },
+};

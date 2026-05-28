@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import app from '../../apps/api/src/index';
+import { ChordDHTTrackerWorker } from '@/workers';
 import { createD1, createStmt } from '../mocks/d1';
 import { createEnv } from '../mocks/env';
 
@@ -28,7 +28,8 @@ describe('GET /tracker/stats', () => {
       createStmt({ firstResult: { value: startedAt } }),
     );
 
-    const res = await app.fetch(new Request('http://localhost/tracker/stats'), createEnv(db), {} as ExecutionContext);
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(new Request('http://localhost/tracker/stats'), createEnv(db), {} as ExecutionContext);
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
@@ -74,7 +75,8 @@ describe('GET /tracker/stats', () => {
       createStmt({ firstResult: { value: new Date().toISOString() } }),
     );
 
-    const res = await app.fetch(new Request('http://localhost/tracker/stats'), createEnv(db), {} as ExecutionContext);
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(new Request('http://localhost/tracker/stats'), createEnv(db), {} as ExecutionContext);
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { avg_finger_table_coverage: null; oldest_node_joined_at: null };

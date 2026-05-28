@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2021",
-    "lib": ["ES2021"],
+    "lib": ["ES2021", "DOM"],
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
@@ -14,5 +14,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["worker-configuration.d.ts", "apps/api/src/global.ts", "scripts/**/*.ts", "test/**/*.ts", "vitest.config.mts"]
+  "include": ["worker-configuration.d.ts", "scripts/**/*.ts", "vitest.config.mts"]
 }

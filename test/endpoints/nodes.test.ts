@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import app from '../../apps/api/src/index';
+import { ChordDHTTrackerWorker } from '@/workers';
 import { createD1, createStmt } from '../mocks/d1';
 import { createEnv } from '../mocks/env';
 
@@ -26,12 +26,13 @@ const node = {
 describe('POST /tracker/nodes', () => {
   it('registers a new node and returns the node count', async () => {
     const db = createD1(
-      createStmt({ changes: 1 }),             // INSERT
+      createStmt({ changes: 1 }),                // INSERT
       createStmt({ firstResult: { count: 1 } }), // evictOverLimit COUNT
       createStmt({ firstResult: { count: 1 } }), // response COUNT
     );
 
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,7 +51,8 @@ describe('POST /tracker/nodes', () => {
 
   it('returns 400 when node_id is not 40 hex characters', async () => {
     const db = createD1();
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,7 +69,8 @@ describe('POST /tracker/nodes', () => {
 
   it('returns 400 when node_id contains uppercase hex', async () => {
     const db = createD1();
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,7 +85,8 @@ describe('POST /tracker/nodes', () => {
 
   it('returns 400 when uri does not start with https://', async () => {
     const db = createD1();
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,7 +103,8 @@ describe('POST /tracker/nodes', () => {
 
   it('returns 400 for malformed JSON body', async () => {
     const db = createD1();
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -118,7 +123,8 @@ describe('POST /tracker/nodes', () => {
 describe('DELETE /tracker/nodes/:node_id', () => {
   it('deregisters an existing node', async () => {
     const db = createD1(createStmt({ changes: 1 }));
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request(`http://localhost/tracker/nodes/${VALID_NODE_ID}`, { method: 'DELETE' }),
       createEnv(db),
       {} as ExecutionContext,
@@ -132,7 +138,8 @@ describe('DELETE /tracker/nodes/:node_id', () => {
 
   it('returns 404 for an unknown node', async () => {
     const db = createD1(createStmt({ changes: 0 }));
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request(`http://localhost/tracker/nodes/${VALID_NODE_ID}`, { method: 'DELETE' }),
       createEnv(db),
       {} as ExecutionContext,
@@ -145,7 +152,8 @@ describe('DELETE /tracker/nodes/:node_id', () => {
 
   it('returns 400 for an invalid node_id in the path', async () => {
     const db = createD1();
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes/bad-id', { method: 'DELETE' }),
       createEnv(db),
       {} as ExecutionContext,
@@ -168,7 +176,8 @@ describe('GET /tracker/nodes/seeds', () => {
       createStmt({ firstResult: { count: 5 } }), // total_known COUNT
     );
 
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes/seeds?count=2'),
       createEnv(db),
       {} as ExecutionContext,
@@ -187,7 +196,8 @@ describe('GET /tracker/nodes/seeds', () => {
       createStmt({ firstResult: { count: 0 } }),
     );
 
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes/seeds'),
       createEnv(db),
       {} as ExecutionContext,
@@ -209,7 +219,8 @@ describe('GET /tracker/nodes', () => {
       createStmt({ firstResult: { count: 1 } }),
     );
 
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes?limit=10&offset=0'),
       createEnv(db),
       {} as ExecutionContext,
@@ -229,7 +240,8 @@ describe('GET /tracker/nodes', () => {
       createStmt({ firstResult: { count: 1 } }),
     );
 
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes?status=ACTIVE'),
       createEnv(db),
       {} as ExecutionContext,
@@ -247,7 +259,8 @@ describe('GET /tracker/nodes', () => {
 describe('GET /tracker/nodes/:node_id', () => {
   it('returns the full node record for a known node', async () => {
     const db = createD1(createStmt({ firstResult: node }));
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request(`http://localhost/tracker/nodes/${VALID_NODE_ID}`),
       createEnv(db),
       {} as ExecutionContext,
@@ -262,7 +275,8 @@ describe('GET /tracker/nodes/:node_id', () => {
 
   it('returns 404 for an unknown node_id', async () => {
     const db = createD1(createStmt({ firstResult: null }));
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request(`http://localhost/tracker/nodes/${VALID_NODE_ID}`),
       createEnv(db),
       {} as ExecutionContext,
@@ -275,7 +289,8 @@ describe('GET /tracker/nodes/:node_id', () => {
 
   it('returns 400 for an invalid node_id format in the path', async () => {
     const db = createD1();
-    const res = await app.fetch(
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
       new Request('http://localhost/tracker/nodes/not-valid'),
       createEnv(db),
       {} as ExecutionContext,

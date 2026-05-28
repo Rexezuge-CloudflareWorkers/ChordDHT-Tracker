@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const apiSrcPath = resolve('apps/api/src');
+const apiSrcPath = fileURLToPath(new URL('./apps/api/src', import.meta.url));
 
 export default defineConfig({
   test: {
