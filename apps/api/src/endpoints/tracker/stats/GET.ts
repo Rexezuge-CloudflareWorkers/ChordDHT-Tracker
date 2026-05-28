@@ -8,6 +8,8 @@ class StatsGetRoute extends IBaseRoute {
     const nowIso = now.toISOString();
     const staleCutoff = new Date(now.getTime() - getStaleThresholdSecs(c.env) * 1000).toISOString();
 
+    const certExpiryCutoff = Math.floor(now.getTime() / 1000) + 30 * 86400;
+
     const row = await c.env.DB.prepare(
       `SELECT
          COUNT(*)                                              AS total_nodes,
@@ -18,10 +20,11 @@ class StatsGetRoute extends IBaseRoute {
          AVG(finger_table_coverage)                            AS avg_finger_table_coverage,
          AVG(uptime_seconds)                                   AS avg_uptime_seconds,
          MIN(joined_at)                                        AS oldest_node_joined_at,
-         MAX(joined_at)                                        AS newest_node_joined_at
+         MAX(joined_at)                                        AS newest_node_joined_at,
+         SUM(CASE WHEN cert_expires_at IS NOT NULL AND cert_expires_at <= ? THEN 1 ELSE 0 END) AS expiring_cert_nodes
        FROM nodes`,
     )
-      .bind(staleCutoff)
+      .bind(staleCutoff, certExpiryCutoff)
       .first<{
         total_nodes: number;
         active_nodes: number;
@@ -32,6 +35,7 @@ class StatsGetRoute extends IBaseRoute {
         avg_uptime_seconds: number | null;
         oldest_node_joined_at: string | null;
         newest_node_joined_at: string | null;
+        expiring_cert_nodes: number;
       }>();
 
     const startedAt = await getStartedAt(c.env.DB, nowIso);
@@ -47,6 +51,7 @@ class StatsGetRoute extends IBaseRoute {
       avg_uptime_seconds: row?.avg_uptime_seconds ?? null,
       oldest_node_joined_at: row?.oldest_node_joined_at ?? null,
       newest_node_joined_at: row?.newest_node_joined_at ?? null,
+      expiring_cert_nodes: row?.expiring_cert_nodes ?? 0,
       tracker_uptime_seconds: trackerUptimeSeconds,
       stats_generated_at: nowIso,
     });

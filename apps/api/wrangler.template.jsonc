@@ -47,5 +47,8 @@
     "MAX_NODES": "1000",
     "STALE_THRESHOLD_SECONDS": "180",
     "SERVE_SPA_FROM_WORKER": "false",
+    // Set via `wrangler secret put CA_PUBLIC_KEY_BASE64` — base64url Ed25519 CA public key (32 bytes).
+    // Leave empty here; configure per-environment via Cloudflare dashboard or wrangler secrets.
+    "CA_PUBLIC_KEY_BASE64": "",
   },
 }
