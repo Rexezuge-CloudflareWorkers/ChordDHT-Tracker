@@ -14,14 +14,14 @@ export function NodeTable({ nodes }: Props) {
 
   if (sorted.length === 0) {
     return (
-      <div className="flex items-center justify-center h-32 text-gray-500 text-sm">
+      <div className="flex items-center justify-center flex-1 text-gray-500 text-sm">
         No nodes registered
       </div>
     );
   }
 
   return (
-    <div className="overflow-auto max-h-96">
+    <div className="flex-1 overflow-y-auto min-h-0">
       <table className="w-full text-sm border-collapse">
         <thead className="sticky top-0 bg-gray-900">
           <tr className="text-left text-xs text-gray-500 uppercase tracking-wide">

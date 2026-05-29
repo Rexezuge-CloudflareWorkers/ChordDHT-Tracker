@@ -10,8 +10,8 @@ export default function SpaApp() {
   const [nodes, setNodes] = useState<TrackerNodeRecord[]>([]);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [paused, setPaused] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -22,16 +22,15 @@ export default function SpaApp() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
-    } finally {
-      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    if (paused) return;
     void refresh();
     const interval = setInterval(() => void refresh(), REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [refresh, paused]);
 
   return (
     <div className="min-h-screen" style={{ background: '#101319' }}>
@@ -39,17 +38,29 @@ export default function SpaApp() {
         <div>
           <h1 className="text-xl font-semibold text-white">Chord DHT Tracker</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            {lastRefresh
-              ? `Last updated ${lastRefresh.toLocaleTimeString()} · auto-refreshes every ${REFRESH_INTERVAL_MS / 1000}s`
-              : 'Loading…'}
+            {lastRefresh ? (
+              <>
+                Last updated {lastRefresh.toLocaleTimeString()} ·{' '}
+                {paused ? (
+                  <span className="text-amber-400">Paused</span>
+                ) : (
+                  `auto-refreshes every ${REFRESH_INTERVAL_MS / 1000}s`
+                )}
+              </>
+            ) : (
+              'Loading…'
+            )}
           </p>
         </div>
         <button
-          onClick={() => void refresh()}
-          disabled={loading}
-          className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md border border-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+          onClick={() => setPaused(p => !p)}
+          className={
+            paused
+              ? 'px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-md border border-indigo-500 transition-colors cursor-pointer'
+              : 'px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md border border-gray-700 transition-colors cursor-pointer'
+          }
         >
-          Refresh
+          {paused ? 'Resume' : 'Pause'}
         </button>
       </header>
 
@@ -62,13 +73,13 @@ export default function SpaApp() {
 
         <StatsPanel stats={stats} />
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
             <h2 className="text-sm font-medium text-gray-400 mb-4">Ring Topology</h2>
             <RingVisualization nodes={nodes} />
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-            <h2 className="text-sm font-medium text-gray-400 mb-2">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col">
+            <h2 className="text-sm font-medium text-gray-400 mb-2 shrink-0">
               Nodes <span className="text-gray-600">({nodes.length})</span>
             </h2>
             <NodeTable nodes={nodes} />
