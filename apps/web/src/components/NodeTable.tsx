@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { TrackerNodeRecord } from '../types';
 import { truncateNodeId, formatRelativeTime } from '../utils';
 import { STATUS_COLORS } from '../constants';
@@ -8,6 +8,14 @@ interface Props {
 }
 
 export function NodeTable({ nodes }: Props) {
+  const [revealedUris, setRevealedUris] = useState<Set<string>>(new Set());
+  const toggleUri = (id: string) =>
+    setRevealedUris(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
   const sorted = [...nodes].sort(
     (a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime(),
   );
@@ -46,7 +54,15 @@ export function NodeTable({ nodes }: Props) {
                   {truncateNodeId(node.node_id)}
                 </td>
                 <td className="py-2 pr-4 text-xs text-gray-400 max-w-40 truncate">
-                  <span className="text-gray-600 italic">[redacted]</span>
+                  {revealedUris.has(node.node_id) ? (
+                    <span onClick={() => toggleUri(node.node_id)} className="cursor-pointer">
+                      {node.uri.replace('https://', '')}
+                    </span>
+                  ) : (
+                    <span onClick={() => toggleUri(node.node_id)} className="cursor-pointer italic text-gray-600 hover:text-gray-400">
+                      [redacted]
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 pr-4">
                   <span
