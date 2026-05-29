@@ -12,7 +12,6 @@ interface Props {
 }
 
 export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdmin }: Props) {
-  const [uriRevealed, setUriRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [visible, setVisible] = useState(false);
 
@@ -22,9 +21,8 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
   }, []);
 
   useEffect(() => {
-    setUriRevealed(false);
     setCopied(false);
-  }, [node.node_id, isAdmin]);
+  }, [node.node_id]);
 
   const copyNodeId = () => {
     void navigator.clipboard.writeText(node.node_id).then(() => {
@@ -97,23 +95,9 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
             <SectionLabel>Connectivity</SectionLabel>
             <div className="space-y-1.5">
               <Row label="URI">
-                {node.uri === null ? (
-                  <RedactedValue />
-                ) : uriRevealed ? (
-                  <span
-                    onClick={() => setUriRevealed(false)}
-                    className="text-xs text-gray-300 cursor-pointer break-all"
-                  >
-                    {node.uri}
-                  </span>
-                ) : (
-                  <span
-                    onClick={() => setUriRevealed(true)}
-                    className="text-xs italic text-gray-600 hover:text-gray-400 cursor-pointer transition-colors"
-                  >
-                    [click to reveal]
-                  </span>
-                )}
+                {node.uri !== null
+                  ? <span className="text-xs text-gray-300 break-all">{node.uri}</span>
+                  : <RedactedValue />}
               </Row>
               <Row label="Successor List Size">
                 {node.successor_list_size != null ? node.successor_list_size : isAdmin ? <NullValue /> : <RedactedValue />}
