@@ -34,7 +34,7 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
   };
 
   const color = STATUS_COLORS[node.status] ?? STATUS_COLORS['UNKNOWN'];
-  const certExpiresAt = node.cert_expires_at ? new Date(node.cert_expires_at * 1000) : null;
+  const certExpiresAt = node.cert_expires_at != null ? new Date(node.cert_expires_at * 1000) : null;
   const certExpired = certExpiresAt != null && certExpiresAt < new Date();
 
   return (
@@ -81,9 +81,15 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                   {node.status}
                 </span>
               </Row>
-              <Row label="Joined">{new Date(node.joined_at).toLocaleString()}</Row>
-              <Row label="Last Seen">{formatRelativeTime(node.last_seen)}</Row>
-              <Row label="Reports">{node.report_count.toLocaleString()}</Row>
+              <Row label="Joined">
+                {node.joined_at !== null ? new Date(node.joined_at).toLocaleString() : isAdmin ? <NullValue /> : <RedactedValue />}
+              </Row>
+              <Row label="Last Seen">
+                {node.last_seen !== null ? formatRelativeTime(node.last_seen) : isAdmin ? <NullValue /> : <RedactedValue />}
+              </Row>
+              <Row label="Reports">
+                {node.report_count !== null ? node.report_count.toLocaleString() : isAdmin ? <NullValue /> : <RedactedValue />}
+              </Row>
             </div>
           </div>
 
@@ -148,20 +154,24 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
             </div>
           </div>
 
-          {certExpiresAt != null && (
+          {(certExpiresAt != null || !isAdmin) && (
             <div>
               <SectionLabel>Certificate</SectionLabel>
               <div className="space-y-1.5">
-                <Row label="Expires">{certExpiresAt.toLocaleString()}</Row>
+                <Row label="Expires">
+                  {certExpiresAt != null ? certExpiresAt.toLocaleString() : isAdmin ? <NullValue /> : <RedactedValue />}
+                </Row>
                 <Row label="Status">
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-medium"
-                    style={certExpired
-                      ? { backgroundColor: '#f9731622', color: '#f97316' }
-                      : { backgroundColor: '#22c55e22', color: '#22c55e' }}
-                  >
-                    {certExpired ? 'EXPIRED' : 'VALID'}
-                  </span>
+                  {certExpiresAt != null ? (
+                    <span
+                      className="px-2 py-0.5 rounded-full text-xs font-medium"
+                      style={certExpired
+                        ? { backgroundColor: '#f9731622', color: '#f97316' }
+                        : { backgroundColor: '#22c55e22', color: '#22c55e' }}
+                    >
+                      {certExpired ? 'EXPIRED' : 'VALID'}
+                    </span>
+                  ) : <RedactedValue />}
                 </Row>
               </div>
             </div>

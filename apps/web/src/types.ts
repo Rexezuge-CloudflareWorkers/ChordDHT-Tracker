@@ -2,9 +2,9 @@ export interface TrackerNodeRecord {
   node_id: string;
   uri: string | null;
   status: string;
-  joined_at: string;
-  last_seen: string;
-  report_count: number;
+  joined_at: string | null;
+  last_seen: string | null;
+  report_count: number | null;
   successor_id: string | null;
   predecessor_id: string | null;
   successor_list_size: number | null;

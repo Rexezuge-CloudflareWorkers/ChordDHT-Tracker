@@ -11,7 +11,7 @@ interface Props {
 
 export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
   const sorted = [...nodes].sort(
-    (a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime(),
+    (a, b) => new Date(b.last_seen ?? 0).getTime() - new Date(a.last_seen ?? 0).getTime(),
   );
 
   if (sorted.length === 0) {
@@ -66,9 +66,13 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
                   </span>
                 </td>
                 <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">
-                  {formatRelativeTime(node.last_seen)}
+                  {node.last_seen !== null
+                    ? formatRelativeTime(node.last_seen)
+                    : <span className="font-mono text-gray-600">{'******'}</span>}
                 </td>
-                <td className="py-2 text-xs text-gray-500 tabular-nums">{node.report_count}</td>
+                <td className="py-2 text-xs text-gray-500 tabular-nums">
+                  {node.report_count !== null ? node.report_count : <span className="font-mono text-gray-600">{'******'}</span>}
+                </td>
               </tr>
             );
           })}
