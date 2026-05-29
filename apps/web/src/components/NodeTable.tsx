@@ -61,7 +61,9 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
                   {truncateNodeId(node.node_id)}
                 </td>
                 <td className="py-2 pr-4 text-xs text-gray-400 max-w-40 truncate">
-                  {revealedUris.has(node.node_id) ? (
+                  {node.uri === null ? (
+                    <span className="font-mono text-gray-600">{'******'}</span>
+                  ) : revealedUris.has(node.node_id) ? (
                     <span
                       onClick={(e) => { e.stopPropagation(); toggleUri(node.node_id); }}
                       className="cursor-pointer"
@@ -73,7 +75,7 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
                       onClick={(e) => { e.stopPropagation(); toggleUri(node.node_id); }}
                       className="cursor-pointer italic text-gray-600 hover:text-gray-400"
                     >
-                      [redacted]
+                      [click to reveal]
                     </span>
                   )}
                 </td>

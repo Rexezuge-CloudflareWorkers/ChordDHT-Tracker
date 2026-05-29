@@ -8,9 +8,10 @@ interface Props {
   knownNodeIds: Set<string>;
   onClose: () => void;
   onNavigate: (nodeId: string) => void;
+  isAdmin: boolean;
 }
 
-export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate }: Props) {
+export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdmin }: Props) {
   const [uriRevealed, setUriRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -23,7 +24,7 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate }: Pro
   useEffect(() => {
     setUriRevealed(false);
     setCopied(false);
-  }, [node.node_id]);
+  }, [node.node_id, isAdmin]);
 
   const copyNodeId = () => {
     void navigator.clipboard.writeText(node.node_id).then(() => {
@@ -90,7 +91,9 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate }: Pro
             <SectionLabel>Connectivity</SectionLabel>
             <div className="space-y-1.5">
               <Row label="URI">
-                {uriRevealed ? (
+                {node.uri === null ? (
+                  <RedactedValue />
+                ) : uriRevealed ? (
                   <span
                     onClick={() => setUriRevealed(false)}
                     className="text-xs text-gray-300 cursor-pointer break-all"
@@ -102,11 +105,13 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate }: Pro
                     onClick={() => setUriRevealed(true)}
                     className="text-xs italic text-gray-600 hover:text-gray-400 cursor-pointer transition-colors"
                   >
-                    [redacted — click to reveal]
+                    [click to reveal]
                   </span>
                 )}
               </Row>
-              <Row label="Successor List Size">{node.successor_list_size ?? '—'}</Row>
+              <Row label="Successor List Size">
+                {node.successor_list_size != null ? node.successor_list_size : isAdmin ? <NullValue /> : <RedactedValue />}
+              </Row>
             </div>
           </div>
 
@@ -116,12 +121,12 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate }: Pro
               <Row label="Successor">
                 {node.successor_id
                   ? <NodeIdChip id={node.successor_id} knownNodeIds={knownNodeIds} onNavigate={onNavigate} />
-                  : <NullValue />}
+                  : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
               <Row label="Predecessor">
                 {node.predecessor_id
                   ? <NodeIdChip id={node.predecessor_id} knownNodeIds={knownNodeIds} onNavigate={onNavigate} />
-                  : <NullValue />}
+                  : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
             </div>
           </div>
@@ -130,14 +135,16 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate }: Pro
             <SectionLabel>Performance</SectionLabel>
             <div className="space-y-1.5">
               <Row label="Uptime">
-                {node.uptime_seconds != null ? formatUptime(node.uptime_seconds) : '—'}
+                {node.uptime_seconds != null ? formatUptime(node.uptime_seconds) : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
               <Row label="Finger Coverage">
                 {node.finger_table_coverage != null
                   ? `${(node.finger_table_coverage * 100).toFixed(1)}%`
-                  : '—'}
+                  : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
-              <Row label="Maintenance Cycles">{node.maintenance_cycles ?? '—'}</Row>
+              <Row label="Maintenance Cycles">
+                {node.maintenance_cycles != null ? node.maintenance_cycles : isAdmin ? <NullValue /> : <RedactedValue />}
+              </Row>
             </div>
           </div>
 
@@ -196,4 +203,8 @@ function NodeIdChip({ id, knownNodeIds, onNavigate }: { id: string; knownNodeIds
 
 function NullValue() {
   return <span className="text-gray-600 text-xs">—</span>;
+}
+
+function RedactedValue() {
+  return <span className="font-mono text-gray-600 text-xs">{'******'}</span>;
 }

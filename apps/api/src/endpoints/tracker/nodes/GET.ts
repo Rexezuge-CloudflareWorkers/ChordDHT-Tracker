@@ -1,6 +1,8 @@
 import { IBaseRoute } from '@/endpoints/IBaseRoute';
 import type { RouteContext } from '@/endpoints/IBaseRoute';
 import type { TrackerNodeRecord } from '@/types';
+import { sanitizeNode } from '@/types';
+import { isAdmin } from '@/auth';
 
 class NodesGetRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
@@ -33,7 +35,8 @@ class NodesGetRoute extends IBaseRoute {
       total = countResult?.count ?? 0;
     }
 
-    return c.json({ nodes, total, limit, offset });
+    const admin = await isAdmin(c.req.raw, c.env);
+    return c.json({ nodes: nodes.map(n => sanitizeNode(n, admin)), total, limit, offset });
   }
 }
 

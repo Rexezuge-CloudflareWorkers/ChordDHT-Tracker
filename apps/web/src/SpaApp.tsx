@@ -5,6 +5,7 @@ import { StatsPanel } from './components/StatsPanel';
 import { RingVisualization } from './components/RingVisualization';
 import { NodeTable } from './components/NodeTable';
 import { NodeDetailPanel } from './components/NodeDetailPanel';
+import { LoginModal } from './components/LoginModal';
 import { REFRESH_INTERVAL_MS } from './constants';
 
 export default function SpaApp() {
@@ -14,13 +15,18 @@ export default function SpaApp() {
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [adminToken, setAdminToken] = useState<string | null>(
+    () => sessionStorage.getItem('adminToken'),
+  );
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   const selectedNode = nodes.find(n => n.node_id === selectedNodeId) ?? null;
   const knownNodeIds = useMemo(() => new Set(nodes.map(n => n.node_id)), [nodes]);
 
   const refresh = useCallback(async () => {
     try {
-      const [nodesRes, statsRes] = await Promise.all([fetchNodes(), fetchStats()]);
+      const token = adminToken ?? undefined;
+      const [nodesRes, statsRes] = await Promise.all([fetchNodes(200, token), fetchStats()]);
       setNodes(nodesRes.nodes);
       setStats(statsRes);
       setLastRefresh(new Date());
@@ -28,7 +34,7 @@ export default function SpaApp() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     }
-  }, []);
+  }, [adminToken]);
 
   useEffect(() => {
     if (paused) return;
@@ -44,6 +50,18 @@ export default function SpaApp() {
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, []);
+
+  const handleLoginSuccess = (token: string) => {
+    setAdminToken(token);
+    setLoginModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('adminToken');
+    setAdminToken(null);
+  };
+
+  const isAdmin = adminToken !== null;
 
   return (
     <div className="min-h-screen" style={{ background: '#101319' }}>
@@ -65,16 +83,33 @@ export default function SpaApp() {
             )}
           </p>
         </div>
-        <button
-          onClick={() => setPaused(p => !p)}
-          className={
-            paused
-              ? 'px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-md border border-indigo-500 transition-colors cursor-pointer'
-              : 'px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md border border-gray-700 transition-colors cursor-pointer'
-          }
-        >
-          {paused ? 'Resume' : 'Pause'}
-        </button>
+        <div className="flex items-center gap-2">
+          {isAdmin ? (
+            <button
+              onClick={handleLogout}
+              className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-indigo-400 rounded-md border border-gray-700 transition-colors cursor-pointer"
+            >
+              Admin · Logout
+            </button>
+          ) : (
+            <button
+              onClick={() => setLoginModalOpen(true)}
+              className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-md border border-gray-700 transition-colors cursor-pointer"
+            >
+              Login
+            </button>
+          )}
+          <button
+            onClick={() => setPaused(p => !p)}
+            className={
+              paused
+                ? 'px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-md border border-indigo-500 transition-colors cursor-pointer'
+                : 'px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md border border-gray-700 transition-colors cursor-pointer'
+            }
+          >
+            {paused ? 'Resume' : 'Pause'}
+          </button>
+        </div>
       </header>
 
       <main className="px-6 py-6 space-y-6">
@@ -114,6 +149,14 @@ export default function SpaApp() {
           knownNodeIds={knownNodeIds}
           onClose={() => setSelectedNodeId(null)}
           onNavigate={setSelectedNodeId}
+          isAdmin={isAdmin}
+        />
+      )}
+
+      {loginModalOpen && (
+        <LoginModal
+          onSuccess={handleLoginSuccess}
+          onClose={() => setLoginModalOpen(false)}
         />
       )}
     </div>

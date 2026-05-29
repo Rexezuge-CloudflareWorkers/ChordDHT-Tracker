@@ -8,3 +8,4 @@ export { NodeDeleteRoute } from './tracker/nodes/[node_id]/DELETE';
 export { NodeHeartbeatPostRoute } from './tracker/nodes/[node_id]/heartbeat/POST';
 export { CRLGetRoute } from './tracker/crl/GET';
 export { CRLPostRoute } from './tracker/crl/POST';
+export { AdminVerifyGetRoute } from './tracker/admin/verify/GET';

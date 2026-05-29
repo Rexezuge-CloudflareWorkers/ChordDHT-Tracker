@@ -10,6 +10,7 @@ import {
   NodeHeartbeatPostRoute,
   CRLGetRoute,
   CRLPostRoute,
+  AdminVerifyGetRoute,
 } from '@/endpoints';
 import { getServeSpaFromWorker } from '@/db';
 import { SPA_HTML } from '@/generated/spa-shell';
@@ -30,6 +31,7 @@ class ChordDHTTrackerWorker {
     app.post('/tracker/nodes/:node_id/heartbeat', (c) => new NodeHeartbeatPostRoute().handle(c));
     app.get('/tracker/crl', (c) => new CRLGetRoute().handle(c));
     app.post('/tracker/crl', (c) => new CRLPostRoute().handle(c));
+    app.get('/tracker/admin/verify', (c) => new AdminVerifyGetRoute().handle(c));
 
     app.get('*', (c) => {
       if (!getServeSpaFromWorker(c.env)) {

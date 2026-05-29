@@ -1,6 +1,6 @@
 export interface TrackerNodeRecord {
   node_id: string;
-  uri: string;
+  uri: string | null;
   status: string;
   joined_at: string;
   last_seen: string;
