@@ -10,7 +10,6 @@ export default function SpaApp() {
   const [nodes, setNodes] = useState<TrackerNodeRecord[]>([]);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
 
@@ -23,8 +22,6 @@ export default function SpaApp() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
-    } finally {
-      setLoading(false);
     }
   }, []);
 
