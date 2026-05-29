@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { TrackerNodeRecord } from '../types';
 import { truncateNodeId, formatRelativeTime } from '../utils';
 import { STATUS_COLORS } from '../constants';
@@ -10,14 +10,6 @@ interface Props {
 }
 
 export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
-  const [revealedUris, setRevealedUris] = useState<Set<string>>(new Set());
-  const toggleUri = (id: string) =>
-    setRevealedUris(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
-      return next;
-    });
-
   const sorted = [...nodes].sort(
     (a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime(),
   );
@@ -61,23 +53,9 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
                   {truncateNodeId(node.node_id)}
                 </td>
                 <td className="py-2 pr-4 text-xs text-gray-400 max-w-40 truncate">
-                  {node.uri === null ? (
-                    <span className="font-mono text-gray-600">{'******'}</span>
-                  ) : revealedUris.has(node.node_id) ? (
-                    <span
-                      onClick={(e) => { e.stopPropagation(); toggleUri(node.node_id); }}
-                      className="cursor-pointer"
-                    >
-                      {node.uri.replace('https://', '')}
-                    </span>
-                  ) : (
-                    <span
-                      onClick={(e) => { e.stopPropagation(); toggleUri(node.node_id); }}
-                      className="cursor-pointer italic text-gray-600 hover:text-gray-400"
-                    >
-                      [click to reveal]
-                    </span>
-                  )}
+                  {node.uri === null
+                    ? <span className="font-mono text-gray-600">{'******'}</span>
+                    : node.uri.replace('https://', '')}
                 </td>
                 <td className="py-2 pr-4">
                   <span
