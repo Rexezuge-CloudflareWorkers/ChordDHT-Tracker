@@ -211,10 +211,10 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
                 {node.status}
               </text>
               <text x={tx + 10} y={ty + 65} fontSize={9} fill="#6b7280">
-                Last seen: {formatRelativeTime(node.last_seen)}
+                Last seen: {node.last_seen !== null ? formatRelativeTime(node.last_seen) : '******'}
               </text>
               <text x={tx + 10} y={ty + 80} fontSize={9} fill="#6b7280">
-                Reports: {node.report_count}
+                Reports: {node.report_count !== null ? node.report_count : '******'}
               </text>
               <text x={tx + 10} y={ty + 97} fontSize={9} fill="#6b7280">
                 Successor: {node.successor_id ? truncateNodeId(node.successor_id) : isAdmin ? '—' : '******'}

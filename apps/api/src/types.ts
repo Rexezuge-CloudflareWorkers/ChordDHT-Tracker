@@ -27,10 +27,15 @@ export interface TrackerNodeRecord {
 
 export type PublicTrackerNodeRecord = Omit<
   TrackerNodeRecord,
-  'uri' | 'successor_id' | 'predecessor_id' | 'cert_json' |
+  'uri' | 'joined_at' | 'last_seen' | 'report_count' | 'cert_expires_at' |
+  'successor_id' | 'predecessor_id' | 'cert_json' |
   'successor_list_size' | 'finger_table_coverage' | 'uptime_seconds' | 'maintenance_cycles'
 > & {
   uri: null;
+  joined_at: null;
+  last_seen: null;
+  report_count: null;
+  cert_expires_at: null;
   successor_id: null;
   predecessor_id: null;
   cert_json: null;
@@ -45,11 +50,11 @@ export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNo
   return {
     node_id: node.node_id,
     status: node.status,
-    joined_at: node.joined_at,
-    last_seen: node.last_seen,
-    report_count: node.report_count,
-    cert_expires_at: node.cert_expires_at,
     uri: null,
+    joined_at: null,
+    last_seen: null,
+    report_count: null,
+    cert_expires_at: null,
     successor_id: null,
     predecessor_id: null,
     cert_json: null,
