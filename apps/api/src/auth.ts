@@ -74,7 +74,7 @@ export function normalizeURI(raw: string): string {
   if (u.pathname && u.pathname !== '/') {
     throw new Error('uri must not include a path');
   }
-  let host = u.hostname.toLowerCase();
+  const host = u.hostname.toLowerCase();
   const port = u.port;
   if (port === '443' || port === '') {
     return `https://${host}`;

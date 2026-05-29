@@ -1,0 +1,199 @@
+import React, { useState, useEffect } from 'react';
+import type { TrackerNodeRecord } from '../types';
+import { truncateNodeId, formatRelativeTime, formatUptime } from '../utils';
+import { STATUS_COLORS } from '../constants';
+
+interface Props {
+  node: TrackerNodeRecord;
+  knownNodeIds: Set<string>;
+  onClose: () => void;
+  onNavigate: (nodeId: string) => void;
+}
+
+export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate }: Props) {
+  const [uriRevealed, setUriRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  useEffect(() => {
+    setUriRevealed(false);
+    setCopied(false);
+  }, [node.node_id]);
+
+  const copyNodeId = () => {
+    void navigator.clipboard.writeText(node.node_id).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  const color = STATUS_COLORS[node.status] ?? STATUS_COLORS['UNKNOWN'];
+  const certExpiresAt = node.cert_expires_at ? new Date(node.cert_expires_at * 1000) : null;
+  const certExpired = certExpiresAt != null && certExpiresAt < new Date();
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+      <div
+        className="fixed right-0 top-0 h-full w-96 max-sm:w-full bg-gray-900 border-l border-gray-800 z-50 flex flex-col shadow-2xl transition-transform duration-200"
+        style={{ transform: visible ? 'translateX(0)' : 'translateX(100%)' }}
+      >
+        <div className="flex items-start justify-between px-5 py-4 border-b border-gray-800 shrink-0">
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Node Detail</p>
+            <p className="font-mono text-sm text-white truncate">{truncateNodeId(node.node_id)}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-4 text-gray-500 hover:text-gray-300 transition-colors cursor-pointer shrink-0 text-xl leading-none mt-0.5"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-5 flex-1 min-h-0 overflow-y-auto">
+          <div>
+            <SectionLabel>Node ID</SectionLabel>
+            <button
+              onClick={copyNodeId}
+              title="Click to copy"
+              className="w-full text-left font-mono text-xs text-gray-300 break-all bg-gray-800/60 rounded px-3 py-2 hover:bg-gray-800 transition-colors cursor-pointer"
+            >
+              {node.node_id}
+              <span className="ml-2 text-gray-600 font-sans">{copied ? '✓ copied' : 'copy'}</span>
+            </button>
+          </div>
+
+          <div>
+            <SectionLabel>Status &amp; Timing</SectionLabel>
+            <div className="space-y-1.5">
+              <Row label="Status">
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs font-medium"
+                  style={{ backgroundColor: `${color}22`, color }}
+                >
+                  {node.status}
+                </span>
+              </Row>
+              <Row label="Joined">{new Date(node.joined_at).toLocaleString()}</Row>
+              <Row label="Last Seen">{formatRelativeTime(node.last_seen)}</Row>
+              <Row label="Reports">{node.report_count.toLocaleString()}</Row>
+            </div>
+          </div>
+
+          <div>
+            <SectionLabel>Connectivity</SectionLabel>
+            <div className="space-y-1.5">
+              <Row label="URI">
+                {uriRevealed ? (
+                  <span
+                    onClick={() => setUriRevealed(false)}
+                    className="text-xs text-gray-300 cursor-pointer break-all"
+                  >
+                    {node.uri}
+                  </span>
+                ) : (
+                  <span
+                    onClick={() => setUriRevealed(true)}
+                    className="text-xs italic text-gray-600 hover:text-gray-400 cursor-pointer transition-colors"
+                  >
+                    [redacted — click to reveal]
+                  </span>
+                )}
+              </Row>
+              <Row label="Successor List Size">{node.successor_list_size ?? '—'}</Row>
+            </div>
+          </div>
+
+          <div>
+            <SectionLabel>Ring Position</SectionLabel>
+            <div className="space-y-1.5">
+              <Row label="Successor">
+                {node.successor_id
+                  ? <NodeIdChip id={node.successor_id} knownNodeIds={knownNodeIds} onNavigate={onNavigate} />
+                  : <NullValue />}
+              </Row>
+              <Row label="Predecessor">
+                {node.predecessor_id
+                  ? <NodeIdChip id={node.predecessor_id} knownNodeIds={knownNodeIds} onNavigate={onNavigate} />
+                  : <NullValue />}
+              </Row>
+            </div>
+          </div>
+
+          <div>
+            <SectionLabel>Performance</SectionLabel>
+            <div className="space-y-1.5">
+              <Row label="Uptime">
+                {node.uptime_seconds != null ? formatUptime(node.uptime_seconds) : '—'}
+              </Row>
+              <Row label="Finger Coverage">
+                {node.finger_table_coverage != null
+                  ? `${(node.finger_table_coverage * 100).toFixed(1)}%`
+                  : '—'}
+              </Row>
+              <Row label="Maintenance Cycles">{node.maintenance_cycles ?? '—'}</Row>
+            </div>
+          </div>
+
+          {certExpiresAt != null && (
+            <div>
+              <SectionLabel>Certificate</SectionLabel>
+              <div className="space-y-1.5">
+                <Row label="Expires">{certExpiresAt.toLocaleString()}</Row>
+                <Row label="Status">
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-medium"
+                    style={certExpired
+                      ? { backgroundColor: '#f9731622', color: '#f97316' }
+                      : { backgroundColor: '#22c55e22', color: '#22c55e' }}
+                  >
+                    {certExpired ? 'EXPIRED' : 'VALID'}
+                  </span>
+                </Row>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">{children}</p>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="text-gray-500 text-xs shrink-0 pt-0.5">{label}</span>
+      <div className="text-gray-300 text-xs text-right">{children}</div>
+    </div>
+  );
+}
+
+function NodeIdChip({ id, knownNodeIds, onNavigate }: { id: string; knownNodeIds: Set<string>; onNavigate: (id: string) => void }) {
+  if (knownNodeIds.has(id)) {
+    return (
+      <button
+        onClick={() => onNavigate(id)}
+        className="font-mono text-xs text-indigo-400 hover:text-indigo-300 hover:underline cursor-pointer transition-colors"
+      >
+        {truncateNodeId(id)}
+      </button>
+    );
+  }
+  return <span className="font-mono text-xs text-gray-400">{truncateNodeId(id)}</span>;
+}
+
+function NullValue() {
+  return <span className="text-gray-600 text-xs">—</span>;
+}
