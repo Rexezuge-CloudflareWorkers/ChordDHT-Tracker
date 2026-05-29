@@ -28,6 +28,13 @@ const LINK_COLOR_HOVER = 'rgba(165, 180, 252, 0.9)';
 export function RingVisualization({ nodes }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [revealedUris, setRevealedUris] = useState<Set<string>>(new Set());
+  const toggleUri = (id: string) =>
+    setRevealedUris(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
 
   if (nodes.length === 0) {
     return (
@@ -158,6 +165,7 @@ export function RingVisualization({ nodes }: Props) {
                   setHoveredNodeId(node.node_id);
                 }}
                 onMouseLeave={() => setHoveredNodeId(null)}
+                onClick={() => toggleUri(node.node_id)}
               />
               {nodes.length <= 24 && (
                 <text
@@ -188,7 +196,9 @@ export function RingVisualization({ nodes }: Props) {
                 {node.node_id.slice(0, 22)}…
               </text>
               <text x={tx + 10} y={ty + 34} fontSize={9} fill="#9ca3af">
-                [redacted]
+                {revealedUris.has(node.node_id)
+                  ? node.uri.replace('https://', '').slice(0, 32)
+                  : '[redacted]'}
               </text>
               <text x={tx + 10} y={ty + 50} fontSize={9} fill={color}>
                 {node.status}
