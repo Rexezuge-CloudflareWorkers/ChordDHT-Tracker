@@ -1,13 +1,21 @@
-import type { NodesResponse, StatsResponse, TrackerNodeRecord } from './types';
+import type { NodesResponse, RegionsResponse, StatsResponse, TrackerNodeRecord } from './types';
 
 function authHeaders(token?: string): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function fetchNodes(limit = 200, token?: string): Promise<NodesResponse> {
-  const res = await fetch(`/tracker/nodes?limit=${limit}`, { headers: authHeaders(token) });
+export async function fetchNodes(limit = 200, token?: string, region?: string): Promise<NodesResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (region) params.set('region', region);
+  const res = await fetch(`/tracker/nodes?${params}`, { headers: authHeaders(token) });
   if (!res.ok) throw new Error(`Failed to fetch nodes: ${res.status}`);
   return res.json() as Promise<NodesResponse>;
+}
+
+export async function fetchRegions(): Promise<RegionsResponse> {
+  const res = await fetch('/tracker/regions');
+  if (!res.ok) throw new Error(`Failed to fetch regions: ${res.status}`);
+  return res.json() as Promise<RegionsResponse>;
 }
 
 export async function fetchStats(): Promise<StatsResponse> {

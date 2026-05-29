@@ -41,8 +41,8 @@ The Tracker stores a registry of known nodes and serves random seed lists for ne
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | ID space | `m = 160` | SHA-1, matches the original Chord paper |
-| Successor list length | `r = 3` | Tolerates up to 3 consecutive node failures |
-| Maintenance interval | 60 s | `check_predecessor → stabilize → fix_fingers` |
+| Successor list length | `r = 5` (v3.0) | Tolerates up to 4 consecutive node failures |
+| Maintenance interval | 15 s active / 60 s quiet | Adaptive per topology activity |
 | Max routing hops | 161 (`m + 1`) | Hard limit per `find_successor` iteration |
 | Expected routing cost | O(log N) hops | Guaranteed by finger table |
 
@@ -78,6 +78,9 @@ All requests and responses use `Content-Type: application/json`. Node IDs are 40
 | `POST` | `/tracker/nodes/:node_id/heartbeat` | Report node liveness and ring state |
 | `GET` | `/tracker/crl` | Fetch the current Certificate Revocation List (v2.0) |
 | `POST` | `/tracker/crl` | Upload a new CA-signed CRL (v2.0) |
+| `GET` | `/tracker/regions` | List known regions and node counts (v3.0) |
+
+`GET /tracker/nodes` also accepts a `?region=<label>` query parameter (v3.0) to filter by region.
 
 ### Key request/response shapes
 

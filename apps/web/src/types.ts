@@ -13,6 +13,11 @@ export interface TrackerNodeRecord {
   maintenance_cycles: number | null;
   cert_json: string | null;
   cert_expires_at: number | null;
+  region: string | null;
+}
+
+export interface RegionsResponse {
+  regions: Record<string, number>;
 }
 
 export interface StatsResponse {

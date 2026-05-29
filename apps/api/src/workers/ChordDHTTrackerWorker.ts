@@ -11,6 +11,7 @@ import {
   CRLGetRoute,
   CRLPostRoute,
   AdminVerifyGetRoute,
+  RegionsGetRoute,
 } from '@/endpoints';
 import { getServeSpaFromWorker } from '@/db';
 import { SPA_HTML } from '@/generated/spa-shell';
@@ -32,6 +33,7 @@ class ChordDHTTrackerWorker {
     app.get('/tracker/crl', (c) => new CRLGetRoute().handle(c));
     app.post('/tracker/crl', (c) => new CRLPostRoute().handle(c));
     app.get('/tracker/admin/verify', (c) => new AdminVerifyGetRoute().handle(c));
+    app.get('/tracker/regions', (c) => new RegionsGetRoute().handle(c));
 
     app.get('*', (c) => {
       if (!getServeSpaFromWorker(c.env)) {
