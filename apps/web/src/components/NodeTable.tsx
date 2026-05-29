@@ -5,9 +5,11 @@ import { STATUS_COLORS } from '../constants';
 
 interface Props {
   nodes: TrackerNodeRecord[];
+  selectedNodeId: string | null;
+  onNodeSelect: (nodeId: string) => void;
 }
 
-export function NodeTable({ nodes }: Props) {
+export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
   const [revealedUris, setRevealedUris] = useState<Set<string>>(new Set());
   const toggleUri = (id: string) =>
     setRevealedUris(prev => {
@@ -48,18 +50,29 @@ export function NodeTable({ nodes }: Props) {
         <tbody>
           {sorted.map((node) => {
             const color = STATUS_COLORS[node.status] ?? STATUS_COLORS['UNKNOWN'];
+            const isSelected = selectedNodeId === node.node_id;
             return (
-              <tr key={node.node_id} className="border-b border-gray-800/40 hover:bg-gray-800/30 transition-colors">
+              <tr
+                key={node.node_id}
+                onClick={() => onNodeSelect(node.node_id)}
+                className={`border-b border-gray-800/40 hover:bg-gray-800/30 transition-colors cursor-pointer${isSelected ? ' bg-indigo-900/20 ring-1 ring-inset ring-indigo-500/30' : ''}`}
+              >
                 <td className="py-2 pr-4 font-mono text-xs text-gray-300 whitespace-nowrap">
                   {truncateNodeId(node.node_id)}
                 </td>
                 <td className="py-2 pr-4 text-xs text-gray-400 max-w-40 truncate">
                   {revealedUris.has(node.node_id) ? (
-                    <span onClick={() => toggleUri(node.node_id)} className="cursor-pointer">
+                    <span
+                      onClick={(e) => { e.stopPropagation(); toggleUri(node.node_id); }}
+                      className="cursor-pointer"
+                    >
                       {node.uri.replace('https://', '')}
                     </span>
                   ) : (
-                    <span onClick={() => toggleUri(node.node_id)} className="cursor-pointer italic text-gray-600 hover:text-gray-400">
+                    <span
+                      onClick={(e) => { e.stopPropagation(); toggleUri(node.node_id); }}
+                      className="cursor-pointer italic text-gray-600 hover:text-gray-400"
+                    >
                       [redacted]
                     </span>
                   )}

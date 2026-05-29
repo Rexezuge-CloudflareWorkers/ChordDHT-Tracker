@@ -11,6 +11,8 @@ export interface TrackerNodeRecord {
   finger_table_coverage: number | null;
   uptime_seconds: number | null;
   maintenance_cycles: number | null;
+  cert_json: string | null;
+  cert_expires_at: number | null;
 }
 
 export interface StatsResponse {

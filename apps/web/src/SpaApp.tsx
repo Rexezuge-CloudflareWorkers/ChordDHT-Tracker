@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchNodes, fetchStats } from './api';
 import type { TrackerNodeRecord, StatsResponse } from './types';
 import { StatsPanel } from './components/StatsPanel';
 import { RingVisualization } from './components/RingVisualization';
 import { NodeTable } from './components/NodeTable';
+import { NodeDetailPanel } from './components/NodeDetailPanel';
 import { REFRESH_INTERVAL_MS } from './constants';
 
 export default function SpaApp() {
@@ -12,6 +13,10 @@ export default function SpaApp() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  const selectedNode = nodes.find(n => n.node_id === selectedNodeId) ?? null;
+  const knownNodeIds = useMemo(() => new Set(nodes.map(n => n.node_id)), [nodes]);
 
   const refresh = useCallback(async () => {
     try {
@@ -31,6 +36,14 @@ export default function SpaApp() {
     const interval = setInterval(() => void refresh(), REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [refresh, paused]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedNodeId(null);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   return (
     <div className="min-h-screen" style={{ background: '#101319' }}>
@@ -76,16 +89,33 @@ export default function SpaApp() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
             <h2 className="text-sm font-medium text-gray-400 mb-4">Ring Topology</h2>
-            <RingVisualization nodes={nodes} />
+            <RingVisualization
+              nodes={nodes}
+              selectedNodeId={selectedNodeId}
+              onNodeSelect={setSelectedNodeId}
+            />
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col">
             <h2 className="text-sm font-medium text-gray-400 mb-2 shrink-0">
               Nodes <span className="text-gray-600">({nodes.length})</span>
             </h2>
-            <NodeTable nodes={nodes} />
+            <NodeTable
+              nodes={nodes}
+              selectedNodeId={selectedNodeId}
+              onNodeSelect={setSelectedNodeId}
+            />
           </div>
         </div>
       </main>
+
+      {selectedNode && (
+        <NodeDetailPanel
+          node={selectedNode}
+          knownNodeIds={knownNodeIds}
+          onClose={() => setSelectedNodeId(null)}
+          onNavigate={setSelectedNodeId}
+        />
+      )}
     </div>
   );
 }

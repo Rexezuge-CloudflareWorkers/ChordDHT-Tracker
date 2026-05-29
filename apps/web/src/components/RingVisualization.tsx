@@ -5,6 +5,8 @@ import { STATUS_COLORS } from '../constants';
 
 interface Props {
   nodes: TrackerNodeRecord[];
+  selectedNodeId: string | null;
+  onNodeSelect: (nodeId: string) => void;
 }
 
 interface TooltipState {
@@ -25,16 +27,9 @@ const ARROW_MARKER_ID_HOVER = 'chord-arrow-hover';
 const LINK_COLOR = 'rgba(99, 102, 241, 0.45)';
 const LINK_COLOR_HOVER = 'rgba(165, 180, 252, 0.9)';
 
-export function RingVisualization({ nodes }: Props) {
+export function RingVisualization({ nodes, selectedNodeId, onNodeSelect }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const [revealedUris, setRevealedUris] = useState<Set<string>>(new Set());
-  const toggleUri = (id: string) =>
-    setRevealedUris(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
-      return next;
-    });
 
   if (nodes.length === 0) {
     return (
@@ -145,16 +140,29 @@ export function RingVisualization({ nodes }: Props) {
           const x = CX + RING_R * Math.cos(angle);
           const y = CY + RING_R * Math.sin(angle);
           const color = STATUS_COLORS[node.status] ?? STATUS_COLORS['UNKNOWN'];
+          const isSelected = selectedNodeId === node.node_id;
 
           return (
             <g key={node.node_id}>
+              {isSelected && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={DOT_R + 5}
+                  fill="none"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  opacity={0.5}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
               <circle
                 cx={x}
                 cy={y}
                 r={DOT_R}
                 fill={color}
-                stroke="#101319"
-                strokeWidth={2}
+                stroke={isSelected ? '#ffffff' : '#101319'}
+                strokeWidth={isSelected ? 2.5 : 2}
                 style={{ cursor: 'pointer' }}
                 onMouseEnter={(e) => {
                   const svg = (e.currentTarget as SVGElement).closest('svg')!;
@@ -165,7 +173,7 @@ export function RingVisualization({ nodes }: Props) {
                   setHoveredNodeId(node.node_id);
                 }}
                 onMouseLeave={() => setHoveredNodeId(null)}
-                onClick={() => toggleUri(node.node_id)}
+                onClick={() => onNodeSelect(node.node_id)}
               />
               {nodes.length <= 24 && (
                 <text
@@ -196,9 +204,7 @@ export function RingVisualization({ nodes }: Props) {
                 {node.node_id.slice(0, 22)}…
               </text>
               <text x={tx + 10} y={ty + 34} fontSize={9} fill="#9ca3af">
-                {revealedUris.has(node.node_id)
-                  ? node.uri.replace('https://', '').slice(0, 32)
-                  : '[redacted]'}
+                [redacted]
               </text>
               <text x={tx + 10} y={ty + 50} fontSize={9} fill={color}>
                 {node.status}
