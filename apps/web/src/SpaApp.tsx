@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchNodes, fetchStats } from './api';
 import type { TrackerNodeRecord, StatsResponse } from './types';
 import { StatsPanel } from './components/StatsPanel';
@@ -19,13 +19,16 @@ export default function SpaApp() {
     () => sessionStorage.getItem('adminToken'),
   );
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const adminTokenRef = useRef(adminToken);
 
   const selectedNode = nodes.find(n => n.node_id === selectedNodeId) ?? null;
   const knownNodeIds = useMemo(() => new Set(nodes.map(n => n.node_id)), [nodes]);
 
+  // refresh reads token from ref so the function reference stays stable,
+  // avoiding interval teardown/restart on every login/logout.
   const refresh = useCallback(async () => {
     try {
-      const token = adminToken ?? undefined;
+      const token = adminTokenRef.current ?? undefined;
       const [nodesRes, statsRes] = await Promise.all([fetchNodes(200, token), fetchStats()]);
       setNodes(nodesRes.nodes);
       setStats(statsRes);
@@ -34,7 +37,7 @@ export default function SpaApp() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     }
-  }, [adminToken]);
+  }, []);
 
   useEffect(() => {
     if (paused) return;
@@ -52,13 +55,17 @@ export default function SpaApp() {
   }, []);
 
   const handleLoginSuccess = (token: string) => {
+    adminTokenRef.current = token;
     setAdminToken(token);
     setLoginModalOpen(false);
+    void refresh();
   };
 
   const handleLogout = () => {
+    adminTokenRef.current = null;
     sessionStorage.removeItem('adminToken');
     setAdminToken(null);
+    void refresh();
   };
 
   const isAdmin = adminToken !== null;
