@@ -25,6 +25,41 @@ export interface TrackerNodeRecord {
   cert_expires_at: number | null;
 }
 
+export type PublicTrackerNodeRecord = Omit<
+  TrackerNodeRecord,
+  'uri' | 'successor_id' | 'predecessor_id' | 'cert_json' |
+  'successor_list_size' | 'finger_table_coverage' | 'uptime_seconds' | 'maintenance_cycles'
+> & {
+  uri: null;
+  successor_id: null;
+  predecessor_id: null;
+  cert_json: null;
+  successor_list_size: null;
+  finger_table_coverage: null;
+  uptime_seconds: null;
+  maintenance_cycles: null;
+};
+
+export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNodeRecord | PublicTrackerNodeRecord {
+  if (admin) return node;
+  return {
+    node_id: node.node_id,
+    status: node.status,
+    joined_at: node.joined_at,
+    last_seen: node.last_seen,
+    report_count: node.report_count,
+    cert_expires_at: node.cert_expires_at,
+    uri: null,
+    successor_id: null,
+    predecessor_id: null,
+    cert_json: null,
+    successor_list_size: null,
+    finger_table_coverage: null,
+    uptime_seconds: null,
+    maintenance_cycles: null,
+  };
+}
+
 export interface NodeInfo {
   node_id: string;
   uri: string;

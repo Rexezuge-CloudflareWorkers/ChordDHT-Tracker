@@ -275,12 +275,14 @@ describe('GET /tracker/nodes', () => {
 // ─── GET /tracker/nodes/:node_id ─────────────────────────────────────────────
 
 describe('GET /tracker/nodes/:node_id', () => {
-  it('returns the full node record for a known node', async () => {
+  it('returns the full node record for an authenticated admin', async () => {
     const db = createD1(createStmt({ firstResult: node }));
     const worker = new ChordDHTTrackerWorker();
     const res = await worker.fetch(
-      new Request(`http://localhost/tracker/nodes/${VALID_NODE_ID}`),
-      createEnv(db),
+      new Request(`http://localhost/tracker/nodes/${VALID_NODE_ID}`, {
+        headers: { Authorization: 'Bearer test-secret' },
+      }),
+      createEnv(db, true, 'test-secret'),
       {} as ExecutionContext,
     );
 
@@ -289,6 +291,21 @@ describe('GET /tracker/nodes/:node_id', () => {
     expect(body.node_id).toBe(VALID_NODE_ID);
     expect(body.uri).toBe(VALID_URI);
     expect(body.status).toBe('ACTIVE');
+  });
+
+  it('redacts sensitive fields for anonymous callers', async () => {
+    const db = createD1(createStmt({ firstResult: node }));
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(`http://localhost/tracker/nodes/${VALID_NODE_ID}`),
+      createEnv(db, true, 'test-secret'),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { uri: null; node_id: string };
+    expect(body.node_id).toBe(VALID_NODE_ID);
+    expect(body.uri).toBeNull();
   });
 
   it('returns 404 for an unknown node_id', async () => {

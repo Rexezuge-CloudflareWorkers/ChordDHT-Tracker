@@ -51,6 +51,13 @@
       // wrangler secrets-store secret create <store_id> --name chord-dht-tracker-ca-public-key --scopes workers --remote
       "secret_name": "chord-dht-tracker-ca-public-key",
     },
+    {
+      "binding": "ADMIN_SECRET",
+      "store_id": "00000000000000000000000000000000",
+      // Shared secret for admin UI authentication. Set via:
+      // wrangler secrets-store secret create <store_id> --name chord-dht-tracker-admin-secret --scopes workers --remote
+      "secret_name": "chord-dht-tracker-admin-secret",
+    },
   ],
   "vars": {
     "MAX_NODES": "1000",

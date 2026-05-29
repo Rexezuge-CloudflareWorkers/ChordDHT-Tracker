@@ -2,6 +2,35 @@ import type { Certificate } from '@/types';
 
 const encoder = new TextEncoder();
 
+// isAdmin checks Authorization: Bearer <token> against ADMIN_SECRET using constant-time HMAC comparison.
+export async function isAdmin(request: Request, env: Env): Promise<boolean> {
+  const auth = request.headers.get('Authorization');
+  if (!auth?.startsWith('Bearer ')) return false;
+  const provided = auth.slice(7);
+  if (!provided) return false;
+
+  let secret: string | null;
+  try {
+    secret = await env.ADMIN_SECRET.get();
+  } catch {
+    return false;
+  }
+  if (!secret || secret === 'UNCONFIGURED') return false;
+
+  const key = await crypto.subtle.importKey(
+    'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const [mac1, mac2] = await Promise.all([
+    crypto.subtle.sign('HMAC', key, encoder.encode(provided)),
+    crypto.subtle.sign('HMAC', key, encoder.encode(secret)),
+  ]);
+  const a = new Uint8Array(mac1);
+  const b = new Uint8Array(mac2);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
 // encodeMessage converts a string to an ArrayBuffer suitable for crypto.subtle.
 function encodeMessage(s: string): ArrayBuffer {
   const encoded = encoder.encode(s);

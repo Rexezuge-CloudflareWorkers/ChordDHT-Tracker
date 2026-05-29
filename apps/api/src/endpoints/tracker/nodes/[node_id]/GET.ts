@@ -1,7 +1,9 @@
 import { IBaseRoute } from '@/endpoints/IBaseRoute';
 import type { RouteContext } from '@/endpoints/IBaseRoute';
 import type { TrackerNodeRecord } from '@/types';
+import { sanitizeNode } from '@/types';
 import { errorResponse } from '@/errors';
+import { isAdmin } from '@/auth';
 
 const NODE_ID_REGEX = /^[0-9a-f]{40}$/;
 
@@ -20,7 +22,8 @@ class NodeGetRoute extends IBaseRoute {
       return errorResponse('NODE_NOT_FOUND', `Node ${node_id} not found`, 404);
     }
 
-    return c.json(node);
+    const admin = await isAdmin(c.req.raw, c.env);
+    return c.json(sanitizeNode(node, admin));
   }
 }
 
