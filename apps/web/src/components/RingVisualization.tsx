@@ -18,10 +18,16 @@ const CY = 300;
 const RING_R = 220;
 const DOT_R = 8;
 const TOOLTIP_W = 210;
-const TOOLTIP_H = 96;
+const TOOLTIP_H = 130;
+
+const ARROW_MARKER_ID = 'chord-arrow';
+const ARROW_MARKER_ID_HOVER = 'chord-arrow-hover';
+const LINK_COLOR = 'rgba(99, 102, 241, 0.45)';
+const LINK_COLOR_HOVER = 'rgba(165, 180, 252, 0.9)';
 
 export function RingVisualization({ nodes }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   if (nodes.length === 0) {
     return (
@@ -31,13 +37,41 @@ export function RingVisualization({ nodes }: Props) {
     );
   }
 
+  const nodeIdSet = new Set(nodes.map(n => n.node_id));
+  const angleMap = new Map(nodes.map(n => [n.node_id, nodeIdToAngle(n.node_id)]));
+
   return (
     <div className="relative select-none">
       <svg
         viewBox="0 0 600 600"
         className="w-full"
-        onMouseLeave={() => setTooltip(null)}
+        onMouseLeave={() => { setTooltip(null); setHoveredNodeId(null); }}
       >
+        <defs>
+          <marker
+            id={ARROW_MARKER_ID}
+            markerWidth="8"
+            markerHeight="8"
+            refX="6"
+            refY="3"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <path d="M0,0 L0,6 L8,3 Z" fill={LINK_COLOR} />
+          </marker>
+          <marker
+            id={ARROW_MARKER_ID_HOVER}
+            markerWidth="8"
+            markerHeight="8"
+            refX="6"
+            refY="3"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <path d="M0,0 L0,6 L8,3 Z" fill={LINK_COLOR_HOVER} />
+          </marker>
+        </defs>
+
         {/* Ring */}
         <circle cx={CX} cy={CY} r={RING_R} fill="none" stroke="#374151" strokeWidth={1.5} />
 
@@ -58,6 +92,45 @@ export function RingVisualization({ nodes }: Props) {
         <text x={CX} y={CY - RING_R - 14} textAnchor="middle" fontSize={10} fill="#4b5563">
           0x0000…
         </text>
+
+        {/* Successor chord lines */}
+        {nodes.map((node) => {
+          if (!node.successor_id || !nodeIdSet.has(node.successor_id)) return null;
+          if (node.successor_id === node.node_id) return null;
+
+          const fromAngle = angleMap.get(node.node_id)!;
+          const toAngle = angleMap.get(node.successor_id)!;
+
+          const x1 = CX + RING_R * Math.cos(fromAngle);
+          const y1 = CY + RING_R * Math.sin(fromAngle);
+          const x2 = CX + RING_R * Math.cos(toAngle);
+          const y2 = CY + RING_R * Math.sin(toAngle);
+
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 1) return null;
+          const shrink = (DOT_R + 2) / dist;
+          const x2s = x2 - dx * shrink;
+          const y2s = y2 - dy * shrink;
+
+          const isHovered =
+            hoveredNodeId === node.node_id || hoveredNodeId === node.successor_id;
+
+          return (
+            <line
+              key={`succ-${node.node_id}`}
+              x1={x1}
+              y1={y1}
+              x2={x2s}
+              y2={y2s}
+              stroke={isHovered ? LINK_COLOR_HOVER : LINK_COLOR}
+              strokeWidth={isHovered ? 1.5 : 1}
+              markerEnd={`url(#${isHovered ? ARROW_MARKER_ID_HOVER : ARROW_MARKER_ID})`}
+              style={{ pointerEvents: 'none' }}
+            />
+          );
+        })}
 
         {/* Node dots */}
         {nodes.map((node) => {
@@ -82,7 +155,9 @@ export function RingVisualization({ nodes }: Props) {
                   const svgX = ((e.clientX - rect.left) / rect.width) * 600;
                   const svgY = ((e.clientY - rect.top) / rect.height) * 600;
                   setTooltip({ svgX, svgY, node });
+                  setHoveredNodeId(node.node_id);
                 }}
+                onMouseLeave={() => setHoveredNodeId(null)}
               />
               {nodes.length <= 24 && (
                 <text
@@ -123,6 +198,12 @@ export function RingVisualization({ nodes }: Props) {
               </text>
               <text x={tx + 10} y={ty + 80} fontSize={9} fill="#6b7280">
                 Reports: {node.report_count}
+              </text>
+              <text x={tx + 10} y={ty + 97} fontSize={9} fill="#6b7280">
+                Successor: {node.successor_id ? truncateNodeId(node.successor_id) : '—'}
+              </text>
+              <text x={tx + 10} y={ty + 113} fontSize={9} fill="#6b7280">
+                Predecessor: {node.predecessor_id ? truncateNodeId(node.predecessor_id) : '—'}
               </text>
             </g>
           );
