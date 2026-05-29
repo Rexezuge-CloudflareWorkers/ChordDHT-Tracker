@@ -7,6 +7,7 @@ interface Props {
   nodes: TrackerNodeRecord[];
   selectedNodeId: string | null;
   onNodeSelect: (nodeId: string) => void;
+  isAdmin: boolean;
 }
 
 interface TooltipState {
@@ -27,7 +28,7 @@ const ARROW_MARKER_ID_HOVER = 'chord-arrow-hover';
 const LINK_COLOR = 'rgba(99, 102, 241, 0.45)';
 const LINK_COLOR_HOVER = 'rgba(165, 180, 252, 0.9)';
 
-export function RingVisualization({ nodes, selectedNodeId, onNodeSelect }: Props) {
+export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
@@ -203,8 +204,8 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect }: Props
               <text x={tx + 10} y={ty + 18} fontSize={10} fill="#f9fafb" fontFamily="monospace">
                 {node.node_id.slice(0, 22)}…
               </text>
-              <text x={tx + 10} y={ty + 34} fontSize={9} fill="#9ca3af">
-                [redacted]
+              <text x={tx + 10} y={ty + 34} fontSize={9} fill="#9ca3af" fontFamily="monospace">
+                {node.uri !== null ? node.uri.replace('https://', '') : '******'}
               </text>
               <text x={tx + 10} y={ty + 50} fontSize={9} fill={color}>
                 {node.status}
@@ -216,10 +217,10 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect }: Props
                 Reports: {node.report_count}
               </text>
               <text x={tx + 10} y={ty + 97} fontSize={9} fill="#6b7280">
-                Successor: {node.successor_id ? truncateNodeId(node.successor_id) : '—'}
+                Successor: {node.successor_id ? truncateNodeId(node.successor_id) : isAdmin ? '—' : '******'}
               </text>
               <text x={tx + 10} y={ty + 113} fontSize={9} fill="#6b7280">
-                Predecessor: {node.predecessor_id ? truncateNodeId(node.predecessor_id) : '—'}
+                Predecessor: {node.predecessor_id ? truncateNodeId(node.predecessor_id) : isAdmin ? '—' : '******'}
               </text>
             </g>
           );

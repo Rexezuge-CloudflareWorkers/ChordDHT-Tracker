@@ -128,6 +128,7 @@ export default function SpaApp() {
               nodes={nodes}
               selectedNodeId={selectedNodeId}
               onNodeSelect={setSelectedNodeId}
+              isAdmin={isAdmin}
             />
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col">
