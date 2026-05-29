@@ -7,9 +7,10 @@ interface Props {
   nodes: TrackerNodeRecord[];
   selectedNodeId: string | null;
   onNodeSelect: (nodeId: string) => void;
+  isAdmin: boolean;
 }
 
-export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
+export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin }: Props) {
   const sorted = [...nodes].sort(
     (a, b) => new Date(b.last_seen ?? 0).getTime() - new Date(a.last_seen ?? 0).getTime(),
   );
@@ -30,12 +31,12 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
             <th className="pb-2 pr-4 font-medium">Node ID</th>
             <th className="pb-2 pr-4 font-medium">URI</th>
             <th className="pb-2 pr-4 font-medium">Status</th>
-            <th className="pb-2 pr-4 font-medium">Region</th>
+            {isAdmin && <th className="pb-2 pr-4 font-medium">Region</th>}
             <th className="pb-2 pr-4 font-medium">Last Seen</th>
             <th className="pb-2 font-medium">Reports</th>
           </tr>
           <tr>
-            <td colSpan={6} className="pb-2">
+            <td colSpan={isAdmin ? 6 : 5} className="pb-2">
               <div className="border-b border-gray-800" />
             </td>
           </tr>
@@ -66,9 +67,11 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect }: Props) {
                     {node.status}
                   </span>
                 </td>
-                <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">
-                  {node.region ?? '—'}
-                </td>
+                {isAdmin && (
+                  <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">
+                    {node.region ?? '—'}
+                  </td>
+                )}
                 <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">
                   {node.last_seen !== null
                     ? formatRelativeTime(node.last_seen)

@@ -30,7 +30,8 @@ export type PublicTrackerNodeRecord = Omit<
   TrackerNodeRecord,
   'uri' | 'joined_at' | 'last_seen' | 'report_count' | 'cert_expires_at' |
   'successor_id' | 'predecessor_id' | 'cert_json' |
-  'successor_list_size' | 'finger_table_coverage' | 'uptime_seconds' | 'maintenance_cycles'
+  'successor_list_size' | 'finger_table_coverage' | 'uptime_seconds' | 'maintenance_cycles' |
+  'region'
 > & {
   uri: null;
   joined_at: null;
@@ -44,6 +45,7 @@ export type PublicTrackerNodeRecord = Omit<
   finger_table_coverage: null;
   uptime_seconds: null;
   maintenance_cycles: null;
+  region: null;
 };
 
 export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNodeRecord | PublicTrackerNodeRecord {
@@ -51,7 +53,7 @@ export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNo
   return {
     node_id: node.node_id,
     status: node.status,
-    region: node.region,
+    region: null,
     uri: null,
     joined_at: null,
     last_seen: null,

@@ -38,7 +38,7 @@ export default function SpaApp() {
       const [nodesRes, statsRes, regionsRes] = await Promise.all([
         fetchNodes(200, token, region),
         fetchStats(),
-        fetchRegions().catch(() => ({ regions: {} })),
+        adminTokenRef.current ? fetchRegions().catch(() => ({ regions: {} })) : Promise.resolve({ regions: {} }),
       ]);
       setNodes(nodesRes.nodes);
       setStats(statsRes);
@@ -76,6 +76,9 @@ export default function SpaApp() {
     adminTokenRef.current = null;
     sessionStorage.removeItem('adminToken');
     setAdminToken(null);
+    regionFilterRef.current = '';
+    setRegionFilter('');
+    setAvailableRegions({});
     void refresh();
   };
 
@@ -154,7 +157,7 @@ export default function SpaApp() {
               <h2 className="text-sm font-medium text-gray-400">
                 Nodes <span className="text-gray-600">({nodes.length})</span>
               </h2>
-              {Object.keys(availableRegions).length > 0 && (
+              {isAdmin && Object.keys(availableRegions).length > 0 && (
                 <select
                   value={regionFilter}
                   onChange={(e) => { setRegionFilter(e.target.value); void refresh(); }}
@@ -171,6 +174,7 @@ export default function SpaApp() {
               nodes={nodes}
               selectedNodeId={selectedNodeId}
               onNodeSelect={setSelectedNodeId}
+              isAdmin={isAdmin}
             />
           </div>
         </div>
