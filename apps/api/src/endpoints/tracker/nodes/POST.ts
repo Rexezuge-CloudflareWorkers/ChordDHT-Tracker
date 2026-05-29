@@ -9,14 +9,15 @@ const NODE_ID_REGEX = /^[0-9a-f]{40}$/;
 
 class NodesPostRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
-    let body: { node_id?: unknown; uri?: unknown; certificate?: unknown };
+    let body: { node_id?: unknown; uri?: unknown; certificate?: unknown; region?: unknown };
     try {
       body = await c.req.json();
     } catch {
       return errorResponse('INVALID_REQUEST', 'Invalid JSON body', 400);
     }
 
-    const { node_id, uri, certificate } = body;
+    const { node_id, uri, certificate, region } = body;
+    const regionValue = typeof region === 'string' && region.length > 0 ? region : null;
     if (typeof node_id !== 'string' || !NODE_ID_REGEX.test(node_id)) {
       return errorResponse('INVALID_REQUEST', 'node_id must be a 40-character lowercase hex string', 400);
     }
@@ -51,15 +52,16 @@ class NodesPostRoute extends IBaseRoute {
 
     const now = new Date().toISOString();
     await c.env.DB.prepare(
-      `INSERT INTO nodes (node_id, uri, joined_at, last_seen, cert_json, cert_expires_at)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO nodes (node_id, uri, joined_at, last_seen, cert_json, cert_expires_at, region)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(node_id) DO UPDATE SET
          uri = excluded.uri,
          last_seen = excluded.last_seen,
          cert_json = COALESCE(excluded.cert_json, cert_json),
-         cert_expires_at = COALESCE(excluded.cert_expires_at, cert_expires_at)`,
+         cert_expires_at = COALESCE(excluded.cert_expires_at, cert_expires_at),
+         region = COALESCE(excluded.region, region)`,
     )
-      .bind(node_id, uri, now, now, certJson, certExpiresAt)
+      .bind(node_id, uri, now, now, certJson, certExpiresAt, regionValue)
       .run();
 
     await evictOverLimit(c.env.DB, getMaxNodes(c.env));

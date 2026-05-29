@@ -23,6 +23,7 @@ export interface TrackerNodeRecord {
   maintenance_cycles: number | null;
   cert_json: string | null;
   cert_expires_at: number | null;
+  region: string | null;
 }
 
 export type PublicTrackerNodeRecord = Omit<
@@ -50,6 +51,7 @@ export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNo
   return {
     node_id: node.node_id,
     status: node.status,
+    region: node.region,
     uri: null,
     joined_at: null,
     last_seen: null,
@@ -80,4 +82,5 @@ export interface HeartbeatBody {
   uptime_seconds?: number;
   maintenance_cycles?: number;
   cert_expires_at?: number | null;
+  region?: string | null;
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { fetchNodes, fetchStats } from './api';
+import { fetchNodes, fetchRegions, fetchStats } from './api';
 import type { TrackerNodeRecord, StatsResponse } from './types';
 import { StatsPanel } from './components/StatsPanel';
 import { RingVisualization } from './components/RingVisualization';
@@ -19,7 +19,12 @@ export default function SpaApp() {
     () => sessionStorage.getItem('adminToken'),
   );
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [regionFilter, setRegionFilter] = useState<string>('');
+  const [availableRegions, setAvailableRegions] = useState<Record<string, number>>({});
   const adminTokenRef = useRef(adminToken);
+  const regionFilterRef = useRef(regionFilter);
+
+  useEffect(() => { regionFilterRef.current = regionFilter; }, [regionFilter]);
 
   const selectedNode = nodes.find(n => n.node_id === selectedNodeId) ?? null;
   const knownNodeIds = useMemo(() => new Set(nodes.map(n => n.node_id)), [nodes]);
@@ -29,9 +34,15 @@ export default function SpaApp() {
   const refresh = useCallback(async () => {
     try {
       const token = adminTokenRef.current ?? undefined;
-      const [nodesRes, statsRes] = await Promise.all([fetchNodes(200, token), fetchStats()]);
+      const region = regionFilterRef.current || undefined;
+      const [nodesRes, statsRes, regionsRes] = await Promise.all([
+        fetchNodes(200, token, region),
+        fetchStats(),
+        fetchRegions().catch(() => ({ regions: {} })),
+      ]);
       setNodes(nodesRes.nodes);
       setStats(statsRes);
+      setAvailableRegions(regionsRes.regions);
       setLastRefresh(new Date());
       setError(null);
     } catch (e) {
@@ -139,9 +150,23 @@ export default function SpaApp() {
             />
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col">
-            <h2 className="text-sm font-medium text-gray-400 mb-2 shrink-0">
-              Nodes <span className="text-gray-600">({nodes.length})</span>
-            </h2>
+            <div className="flex items-center justify-between mb-2 shrink-0 gap-2">
+              <h2 className="text-sm font-medium text-gray-400">
+                Nodes <span className="text-gray-600">({nodes.length})</span>
+              </h2>
+              {Object.keys(availableRegions).length > 0 && (
+                <select
+                  value={regionFilter}
+                  onChange={(e) => { setRegionFilter(e.target.value); void refresh(); }}
+                  className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 cursor-pointer"
+                >
+                  <option value="">All regions</option>
+                  {Object.entries(availableRegions).map(([r, count]) => (
+                    <option key={r} value={r}>{r} ({count})</option>
+                  ))}
+                </select>
+              )}
+            </div>
             <NodeTable
               nodes={nodes}
               selectedNodeId={selectedNodeId}

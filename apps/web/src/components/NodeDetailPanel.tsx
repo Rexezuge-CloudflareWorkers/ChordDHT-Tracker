@@ -99,6 +99,11 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                   ? <span className="text-xs text-gray-300 break-all">{node.uri}</span>
                   : <RedactedValue />}
               </Row>
+              <Row label="Region">
+                {node.region != null
+                  ? <span className="text-xs text-gray-300">{node.region}</span>
+                  : <NullValue />}
+              </Row>
               <Row label="Successor List Size">
                 {node.successor_list_size != null ? node.successor_list_size : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
