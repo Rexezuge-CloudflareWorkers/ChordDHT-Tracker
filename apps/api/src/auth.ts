@@ -15,7 +15,7 @@ export async function isAdmin(request: Request, env: Env): Promise<boolean> {
   } catch {
     return false;
   }
-  if (!secret) return false;
+  if (!secret || secret === 'UNCONFIGURED') return false;
 
   const key = await crypto.subtle.importKey(
     'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
