@@ -25,7 +25,6 @@ class NodeHeartbeatPostRoute extends IBaseRoute {
     }
 
     const now = new Date().toISOString();
-    const cfColo = (c.req.raw as Request & { cf?: { colo?: string } }).cf?.colo ?? null;
 
     const result = await c.env.DB.prepare(
       `UPDATE nodes SET
@@ -39,7 +38,7 @@ class NodeHeartbeatPostRoute extends IBaseRoute {
          uptime_seconds        = ?,
          maintenance_cycles    = ?,
          cert_expires_at       = COALESCE(?, cert_expires_at),
-         region                = COALESCE(?, region, ?),
+         region                = COALESCE(?, region),
          maintenance_mode      = COALESCE(?, maintenance_mode),
          cache_hits            = ?,
          cache_misses          = ?,
@@ -60,7 +59,6 @@ class NodeHeartbeatPostRoute extends IBaseRoute {
         body.maintenance_cycles ?? null,
         body.cert_expires_at ?? null,
         body.region ?? null,
-        cfColo,
         body.maintenance_mode ?? null,
         body.cache_hits ?? null,
         body.cache_misses ?? null,
