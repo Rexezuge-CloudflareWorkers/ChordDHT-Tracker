@@ -63,12 +63,16 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleC
                     : node.uri.replace('https://', '')}
                 </td>
                 <td className="py-2 pr-4">
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
-                    style={{ backgroundColor: `${color}22`, color }}
-                  >
-                    {displayStatus}
-                  </span>
+                  {node.last_seen === null
+                    ? <span className="font-mono text-gray-600">{'******'}</span>
+                    : (
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                        style={{ backgroundColor: `${color}22`, color }}
+                      >
+                        {displayStatus}
+                      </span>
+                    )}
                 </td>
                 {isAdmin && (
                   <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">
