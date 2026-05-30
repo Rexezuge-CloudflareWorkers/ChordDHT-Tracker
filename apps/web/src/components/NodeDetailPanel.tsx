@@ -35,6 +35,10 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
   const certExpiresAt = node.cert_expires_at != null ? new Date(node.cert_expires_at * 1000) : null;
   const certExpired = certExpiresAt != null && certExpiresAt < new Date();
 
+  const cacheTotal = (node.cache_hits ?? 0) + (node.cache_misses ?? 0);
+  const cacheHitRate = cacheTotal > 0 ? `${(((node.cache_hits ?? 0) / cacheTotal) * 100).toFixed(1)}%` : '—';
+  const hasCacheData = node.cache_hits != null || node.cache_misses != null;
+
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
@@ -88,6 +92,18 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
               <Row label="Reports">
                 {node.report_count !== null ? node.report_count.toLocaleString() : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
+              <Row label="Maint. Mode">
+                {node.maintenance_mode != null ? (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-medium"
+                    style={node.maintenance_mode === 'ACTIVE_MAINTENANCE'
+                      ? { backgroundColor: '#f59e0b22', color: '#f59e0b' }
+                      : { backgroundColor: '#6b728022', color: '#9ca3af' }}
+                  >
+                    {node.maintenance_mode === 'ACTIVE_MAINTENANCE' ? 'ACTIVE' : 'QUIET'}
+                  </span>
+                ) : isAdmin ? <NullValue /> : <RedactedValue />}
+              </Row>
             </div>
           </div>
 
@@ -116,6 +132,11 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                 ) : (
                   <RedactedValue />
                 )}
+              </Row>
+              <Row label="Predecessor List">
+                {node.predecessor_list_size != null
+                  ? node.predecessor_list_size
+                  : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
             </div>
           </div>
@@ -152,6 +173,18 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
               </Row>
             </div>
           </div>
+
+          {isAdmin && hasCacheData && (
+            <div>
+              <SectionLabel>Cache</SectionLabel>
+              <div className="space-y-1.5">
+                <Row label="Hit Rate">{cacheHitRate}</Row>
+                <Row label="Hits">{(node.cache_hits ?? 0).toLocaleString()}</Row>
+                <Row label="Misses">{(node.cache_misses ?? 0).toLocaleString()}</Row>
+                <Row label="Size">{node.cache_size ?? <NullValue />}</Row>
+              </div>
+            </div>
+          )}
 
           {(certExpiresAt != null || !isAdmin) && (
             <div>

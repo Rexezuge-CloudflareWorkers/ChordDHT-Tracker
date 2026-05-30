@@ -21,7 +21,11 @@ class StatsGetRoute extends IBaseRoute {
          AVG(uptime_seconds)                                   AS avg_uptime_seconds,
          MIN(joined_at)                                        AS oldest_node_joined_at,
          MAX(joined_at)                                        AS newest_node_joined_at,
-         SUM(CASE WHEN cert_expires_at IS NOT NULL AND cert_expires_at <= ? THEN 1 ELSE 0 END) AS expiring_cert_nodes
+         SUM(CASE WHEN cert_expires_at IS NOT NULL AND cert_expires_at <= ? THEN 1 ELSE 0 END) AS expiring_cert_nodes,
+         SUM(CASE WHEN maintenance_mode = 'ACTIVE_MAINTENANCE' THEN 1 ELSE 0 END) AS active_maintenance_nodes,
+         AVG(CASE WHEN cache_hits + cache_misses > 0
+                  THEN CAST(cache_hits AS REAL) / (cache_hits + cache_misses)
+                  ELSE NULL END)                               AS avg_cache_hit_rate
        FROM nodes`,
     )
       .bind(staleCutoff, certExpiryCutoff)
@@ -36,6 +40,8 @@ class StatsGetRoute extends IBaseRoute {
         oldest_node_joined_at: string | null;
         newest_node_joined_at: string | null;
         expiring_cert_nodes: number;
+        active_maintenance_nodes: number;
+        avg_cache_hit_rate: number | null;
       }>();
 
     const startedAt = await getStartedAt(c.env.DB, nowIso);
@@ -52,6 +58,8 @@ class StatsGetRoute extends IBaseRoute {
       oldest_node_joined_at: row?.oldest_node_joined_at ?? null,
       newest_node_joined_at: row?.newest_node_joined_at ?? null,
       expiring_cert_nodes: row?.expiring_cert_nodes ?? 0,
+      active_maintenance_nodes: row?.active_maintenance_nodes ?? 0,
+      avg_cache_hit_rate: row?.avg_cache_hit_rate ?? null,
       tracker_uptime_seconds: trackerUptimeSeconds,
       stale_threshold_seconds: getStaleThresholdSecs(c.env),
       stats_generated_at: nowIso,

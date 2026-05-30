@@ -15,6 +15,11 @@ export interface TrackerNodeRecord {
   cert_json: string | null;
   cert_expires_at: number | null;
   region: string | null;
+  maintenance_mode: string | null;
+  cache_hits: number | null;
+  cache_misses: number | null;
+  cache_size: number | null;
+  predecessor_list_size: number | null;
 }
 
 export interface RegionsResponse {
@@ -34,6 +39,8 @@ export interface StatsResponse {
   tracker_uptime_seconds: number;
   stale_threshold_seconds: number;
   stats_generated_at: string;
+  active_maintenance_nodes: number;
+  avg_cache_hit_rate: number | null;
 }
 
 export interface NodesResponse {

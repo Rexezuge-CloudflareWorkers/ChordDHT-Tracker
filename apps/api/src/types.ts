@@ -25,6 +25,11 @@ export interface TrackerNodeRecord {
   cert_json: string | null;
   cert_expires_at: number | null;
   region: string | null;
+  maintenance_mode: string | null;
+  cache_hits: number | null;
+  cache_misses: number | null;
+  cache_size: number | null;
+  predecessor_list_size: number | null;
 }
 
 export type PublicTrackerNodeRecord = Omit<
@@ -44,6 +49,11 @@ export type PublicTrackerNodeRecord = Omit<
   | 'uptime_seconds'
   | 'maintenance_cycles'
   | 'region'
+  | 'maintenance_mode'
+  | 'cache_hits'
+  | 'cache_misses'
+  | 'cache_size'
+  | 'predecessor_list_size'
 > & {
   status: null;
   uri: null;
@@ -60,6 +70,11 @@ export type PublicTrackerNodeRecord = Omit<
   uptime_seconds: null;
   maintenance_cycles: null;
   region: null;
+  maintenance_mode: null;
+  cache_hits: null;
+  cache_misses: null;
+  cache_size: null;
+  predecessor_list_size: null;
 };
 
 export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNodeRecord | PublicTrackerNodeRecord {
@@ -81,6 +96,11 @@ export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNo
     finger_table_coverage: null,
     uptime_seconds: null,
     maintenance_cycles: null,
+    maintenance_mode: null,
+    cache_hits: null,
+    cache_misses: null,
+    cache_size: null,
+    predecessor_list_size: null,
   };
 }
 
@@ -101,4 +121,9 @@ export interface HeartbeatBody {
   maintenance_cycles?: number;
   cert_expires_at?: number | null;
   region?: string | null;
+  maintenance_mode?: string;
+  cache_hits?: number;
+  cache_misses?: number;
+  cache_size?: number;
+  predecessor_list_size?: number;
 }

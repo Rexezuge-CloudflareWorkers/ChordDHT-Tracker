@@ -20,8 +20,8 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
 export function StatsPanel({ stats }: Props) {
   if (!stats) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3">
-        {Array.from({ length: 7 }).map((_, i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-9 gap-3">
+        {Array.from({ length: 9 }).map((_, i) => (
           <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg p-4 h-20 animate-pulse" />
         ))}
       </div>
@@ -33,13 +33,20 @@ export function StatsPanel({ stats }: Props) {
       ? `${(stats.avg_finger_table_coverage * 100).toFixed(1)}%`
       : '—';
 
+  const cacheHitRate =
+    stats.avg_cache_hit_rate != null
+      ? `${(stats.avg_cache_hit_rate * 100).toFixed(1)}%`
+      : '—';
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-9 gap-3">
       <StatCard label="Total Nodes" value={stats.total_nodes} />
       <StatCard label="Active" value={stats.active_nodes} color="#22c55e" />
       <StatCard label="Isolated" value={stats.isolated_nodes} color="#eab308" />
       <StatCard label="Leaving" value={stats.leaving_nodes} color="#f97316" />
       <StatCard label="Stale" value={stats.stale_nodes} color="#ef4444" />
+      <StatCard label="Active Maint." value={stats.active_maintenance_nodes} color="#f59e0b" />
+      <StatCard label="Avg Cache Hit" value={cacheHitRate} />
       <StatCard label="Avg Finger Coverage" value={coverage} />
       <StatCard label="Tracker Uptime" value={formatUptime(stats.tracker_uptime_seconds)} />
     </div>
