@@ -53,6 +53,7 @@ class StatsGetRoute extends IBaseRoute {
       newest_node_joined_at: row?.newest_node_joined_at ?? null,
       expiring_cert_nodes: row?.expiring_cert_nodes ?? 0,
       tracker_uptime_seconds: trackerUptimeSeconds,
+      stale_threshold_seconds: getStaleThresholdSecs(c.env),
       stats_generated_at: nowIso,
     });
   }
