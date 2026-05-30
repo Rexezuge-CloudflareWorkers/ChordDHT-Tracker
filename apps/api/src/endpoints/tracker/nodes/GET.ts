@@ -3,6 +3,7 @@ import type { RouteContext } from '@/endpoints/IBaseRoute';
 import type { TrackerNodeRecord } from '@/types';
 import { sanitizeNode } from '@/types';
 import { isAdmin } from '@/auth';
+import { parseNodeJsonColumns } from '@/db';
 
 class NodesGetRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
@@ -50,7 +51,7 @@ class NodesGetRoute extends IBaseRoute {
     }
 
     const admin = await isAdmin(c.req.raw, c.env);
-    return c.json({ nodes: nodes.map(n => sanitizeNode(n, admin)), total, limit, offset });
+    return c.json({ nodes: nodes.map(n => sanitizeNode(parseNodeJsonColumns(n), admin)), total, limit, offset });
   }
 }
 

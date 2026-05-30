@@ -44,6 +44,10 @@ class NodeHeartbeatPostRoute extends IBaseRoute {
          cache_misses          = ?,
          cache_size            = ?,
          predecessor_list_size = ?,
+         successor_list        = ?,
+         predecessor_list      = ?,
+         rtt_samples           = ?,
+         finger_nodes          = ?,
          report_count          = report_count + 1
        WHERE node_id = ?`,
     )
@@ -64,6 +68,10 @@ class NodeHeartbeatPostRoute extends IBaseRoute {
         body.cache_misses ?? null,
         body.cache_size ?? null,
         body.predecessor_list_size ?? null,
+        body.successor_list ? JSON.stringify(body.successor_list) : null,
+        body.predecessor_list ? JSON.stringify(body.predecessor_list) : null,
+        body.rtt_samples ? JSON.stringify(body.rtt_samples) : null,
+        body.finger_nodes ? JSON.stringify(body.finger_nodes) : null,
         node_id,
       )
       .run();

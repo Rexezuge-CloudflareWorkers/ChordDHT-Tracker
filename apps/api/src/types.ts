@@ -30,6 +30,10 @@ export interface TrackerNodeRecord {
   cache_misses: number | null;
   cache_size: number | null;
   predecessor_list_size: number | null;
+  successor_list: string | null;
+  predecessor_list: string | null;
+  rtt_samples: string | null;
+  finger_nodes: string | null;
 }
 
 export type PublicTrackerNodeRecord = Omit<
@@ -54,6 +58,10 @@ export type PublicTrackerNodeRecord = Omit<
   | 'cache_misses'
   | 'cache_size'
   | 'predecessor_list_size'
+  | 'successor_list'
+  | 'predecessor_list'
+  | 'rtt_samples'
+  | 'finger_nodes'
 > & {
   status: null;
   uri: null;
@@ -75,6 +83,10 @@ export type PublicTrackerNodeRecord = Omit<
   cache_misses: null;
   cache_size: null;
   predecessor_list_size: null;
+  successor_list: null;
+  predecessor_list: null;
+  rtt_samples: null;
+  finger_nodes: null;
 };
 
 export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNodeRecord | PublicTrackerNodeRecord {
@@ -101,6 +113,10 @@ export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNo
     cache_misses: null,
     cache_size: null,
     predecessor_list_size: null,
+    successor_list: null,
+    predecessor_list: null,
+    rtt_samples: null,
+    finger_nodes: null,
   };
 }
 
@@ -126,4 +142,8 @@ export interface HeartbeatBody {
   cache_misses?: number;
   cache_size?: number;
   predecessor_list_size?: number;
+  successor_list?: string[];
+  predecessor_list?: string[];
+  rtt_samples?: Record<string, number>;
+  finger_nodes?: string[];
 }
