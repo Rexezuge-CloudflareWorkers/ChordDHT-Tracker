@@ -45,7 +45,7 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleC
         <tbody>
           {sorted.map((node) => {
             const isStale = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
-            const displayStatus = isStale ? 'STALE' : node.status;
+            const displayStatus = isStale ? 'STALE' : (node.status ?? 'UNKNOWN');
             const color = STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
             const isSelected = selectedNodeId === node.node_id;
             return (
@@ -63,7 +63,7 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleC
                     : node.uri.replace('https://', '')}
                 </td>
                 <td className="py-2 pr-4">
-                  {node.last_seen === null
+                  {node.status === null
                     ? <span className="font-mono text-gray-600">{'******'}</span>
                     : (
                       <span
