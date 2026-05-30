@@ -17,8 +17,7 @@ class NodesPostRoute extends IBaseRoute {
     }
 
     const { node_id, uri, certificate, region } = body;
-    const cfColo = (c.req.raw as Request & { cf?: { colo?: string } }).cf?.colo ?? null;
-    const effectiveRegion = (typeof region === 'string' && region.length > 0) ? region : cfColo;
+    const effectiveRegion = (typeof region === 'string' && region.length > 0) ? region : null;
     if (typeof node_id !== 'string' || !NODE_ID_REGEX.test(node_id)) {
       return errorResponse('INVALID_REQUEST', 'node_id must be a 40-character lowercase hex string', 400);
     }
