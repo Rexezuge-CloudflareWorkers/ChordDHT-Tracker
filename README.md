@@ -17,12 +17,13 @@ A Cloudflare Worker that acts as the centralized bootstrap and health-monitoring
           │         Chord DHT Tracker            │
           │  (this repo — Cloudflare Worker)     │
           │                                      │
-          │  POST /tracker/nodes      register   │
-          │  GET  /tracker/nodes/seeds  seeds    │
+          │  POST /tracker/nodes        register  │
+          │  GET  /tracker/nodes/seeds   seeds   │
           │  POST /tracker/nodes/:id/heartbeat   │
-          │  GET  /tracker/crl        revocation │
+          │  GET  /tracker/crl       revocation  │
           │  GET  /tracker/stats      dashboard  │
           │  GET  /tracker/health     liveness   │
+          │  GET  /tracker/admin/verify  admin   │
           └──────────────────────────────────────┘
                     ▲ optional bootstrap only
         ┌───────────┼───────────────────────────┐
@@ -71,16 +72,19 @@ All requests and responses use `Content-Type: application/json`. Node IDs are 40
 | `GET` | `/tracker/health` | Tracker liveness check |
 | `GET` | `/tracker/stats` | Global ring health summary |
 | `POST` | `/tracker/nodes` | Register a node (optionally includes v2.0 certificate) |
-| `GET` | `/tracker/nodes` | List all known nodes (paginated) |
+| `GET` | `/tracker/nodes` | List all known nodes (paginated); full data requires admin token |
 | `GET` | `/tracker/nodes/seeds` | Fetch random bootstrap seeds |
-| `GET` | `/tracker/nodes/:node_id` | Get a specific node record |
+| `GET` | `/tracker/nodes/:node_id` | Get a specific node record; full data requires admin token |
 | `DELETE` | `/tracker/nodes/:node_id` | Deregister a node (graceful leave) |
 | `POST` | `/tracker/nodes/:node_id/heartbeat` | Report node liveness and ring state |
 | `GET` | `/tracker/crl` | Fetch the current Certificate Revocation List (v2.0) |
 | `POST` | `/tracker/crl` | Upload a new CA-signed CRL (v2.0) |
-| `GET` | `/tracker/regions` | List known regions and node counts (v3.0) |
+| `GET` | `/tracker/regions` | List known regions and node counts (v3.0); requires admin token |
+| `GET` | `/tracker/admin/verify` | Verify admin token validity |
 
-`GET /tracker/nodes` also accepts a `?region=<label>` query parameter (v3.0) to filter by region.
+`GET /tracker/nodes` and `GET /tracker/nodes/:node_id` return all fields when the request includes `Authorization: Bearer <ADMIN_SECRET>`; unauthenticated requests receive only `node_id` with all other fields set to `null`.
+
+`GET /tracker/nodes` also accepts a `?region=<label>` query parameter (v3.0) to filter by region (admin only).
 
 ### Key request/response shapes
 
@@ -116,12 +120,20 @@ All requests and responses use `Content-Type: application/json`. Node IDs are 40
   "predecessor_id": "<40-hex>",
   "successor_list_size": 3,
   "successor_list_capacity": 5,
+  "predecessor_list_size": 3,
   "finger_table_coverage": 0.85,
   "uptime_seconds": 3600,
   "maintenance_cycles": 60,
-  "cert_expires_at": 1779926400
+  "cert_expires_at": 1779926400,
+  "region": "us-east",
+  "maintenance_mode": "ACTIVE_MAINTENANCE",
+  "cache_hits": 120,
+  "cache_misses": 30,
+  "cache_size": 50
 }
 ```
+
+All fields are optional; omitted fields leave the stored value unchanged. `maintenance_mode` signals the node is running active stabilisation (`"ACTIVE_MAINTENANCE"`).
 
 **Stats — `GET /tracker/stats`**
 ```json
@@ -133,13 +145,20 @@ All requests and responses use `Content-Type: application/json`. Node IDs are 40
   "stale_nodes": 2,
   "avg_finger_table_coverage": 0.82,
   "avg_uptime_seconds": 1800,
+  "oldest_node_joined_at": "2026-05-01T00:00:00Z",
+  "newest_node_joined_at": "2026-05-30T11:00:00Z",
   "expiring_cert_nodes": 2,
+  "active_maintenance_nodes": 3,
+  "avg_cache_hit_rate": 0.8,
   "tracker_uptime_seconds": 7200,
-  "stats_generated_at": "2026-05-28T12:00:00Z"
+  "stale_threshold_seconds": 180,
+  "stats_generated_at": "2026-05-30T12:00:00Z"
 }
 ```
 
-`expiring_cert_nodes` counts nodes whose `cert_expires_at` is within the next 30 days.
+- `expiring_cert_nodes` — nodes whose `cert_expires_at` is within the next 30 days.
+- `active_maintenance_nodes` — nodes currently reporting `maintenance_mode = "ACTIVE_MAINTENANCE"`.
+- `avg_cache_hit_rate` — mean `cache_hits / (cache_hits + cache_misses)` across nodes that reported both values; `null` if no data.
 
 Nodes not seen within `STALE_THRESHOLD_SECONDS` (default 180 s) are counted as `stale_nodes`. The Tracker never probes nodes actively; it relies entirely on heartbeat reports.
 
@@ -199,24 +218,56 @@ If `CA_PUBLIC_KEY_BASE64` is absent or empty, certificate fields are silently ig
 
 ### Setting the CA Public Key
 
+Both `CA_PUBLIC_KEY_BASE64` and `ADMIN_SECRET` are stored in the Cloudflare Secrets Store (not `wrangler secret`). After creating a Secrets Store and filling in the `store_id` in your `wrangler.jsonc`:
+
 ```sh
-# Use wrangler secrets (recommended — not stored in wrangler.jsonc)
-wrangler secret put CA_PUBLIC_KEY_BASE64
+# Create the CA key secret
+wrangler secrets-store secret create <store_id> \
+  --name chord-dht-tracker-ca-public-key \
+  --scopes workers --remote
 # Paste the base64url-encoded 32-byte CA Ed25519 public key when prompted
 
-# Or for local dev, set in .dev.vars:
-CA_PUBLIC_KEY_BASE64=<base64url-32-bytes>
+# Create the admin secret
+wrangler secrets-store secret create <store_id> \
+  --name chord-dht-tracker-admin-secret \
+  --scopes workers --remote
+# Paste any strong shared secret string when prompted
 ```
+
+For local dev, add to `.dev.vars`:
+```
+CA_PUBLIC_KEY_BASE64=<base64url-32-bytes>
+ADMIN_SECRET=<your-local-secret>
+```
+
+## Admin Authentication
+
+Admin access unlocks full node data and the `/tracker/regions` endpoint.
+
+Pass `Authorization: Bearer <ADMIN_SECRET>` on any request to authenticate as admin. The token is verified using a constant-time HMAC comparison against the `ADMIN_SECRET` Secrets Store binding.
+
+Use `GET /tracker/admin/verify` to confirm a token is valid before storing it:
+
+```sh
+curl -H "Authorization: Bearer <token>" https://<tracker-host>/tracker/admin/verify
+# {"admin": true}
+```
+
+If `ADMIN_SECRET` is absent or set to `UNCONFIGURED`, all admin-auth checks return `false` and the endpoint returns `401`.
 
 ## Dashboard
 
-A Vite + React SPA (`apps/web/`) is deployed as Cloudflare Pages and shows:
+A Vite + React SPA (`apps/web/`) is served as Cloudflare Workers Assets and shows:
 
-- **Stats panel** — active/isolated/stale node counts, average finger table coverage, and expiring cert count
+- **Stats panel** — active/isolated/stale node counts, average finger table coverage, expiring cert count, active maintenance node count, and average cache hit rate
 - **Ring visualization** — SVG circle plot of all nodes positioned by their SHA-1 ID angle, color-coded by status
-- **Node table** — sortable list with successor/predecessor IDs, uptime, and last-seen time
+- **Node table** — sortable list; click a row to open the detail panel
+- **Node detail panel** — full ring-state breakdown for a selected node (successor/predecessor, finger table coverage, uptime, maintenance mode, cache stats)
+- **Admin login** — enter `ADMIN_SECRET` via the Login button; unlocks full node data, region filter, and the detail panel fields that are otherwise masked
+- **Region filter** — dropdown (admin only) to restrict the node list and ring view to a single region
+- **Pause/Resume** — halt auto-refresh without reloading the page
 
-The dashboard polls `GET /tracker/nodes` and `GET /tracker/stats` every 5 seconds.
+The dashboard polls `GET /tracker/nodes` and `GET /tracker/stats` on a configurable interval (default 5 s). `GET /tracker/regions` is fetched in admin mode to populate the region filter.
 
 ## Project Layout
 
@@ -225,7 +276,7 @@ apps/
   api/                         Cloudflare Worker (Tracker API)
     src/
       index.ts                 Worker entry point
-      auth.ts                  Web Crypto helpers: cert verify, CRL verify, URI normalise + SHA-1 hash
+      auth.ts                  Web Crypto helpers: cert verify, CRL verify, admin auth, URI normalise + SHA-1 hash
       workers/
         ChordDHTTrackerWorker.ts  Hono app + route registration
       endpoints/               File-routed handlers (one file = one HTTP method)
@@ -239,23 +290,34 @@ apps/
         tracker/nodes/[node_id]/heartbeat/POST.ts
         tracker/crl/GET.ts
         tracker/crl/POST.ts
+        tracker/regions/GET.ts
+        tracker/admin/verify/GET.ts
+      generated/
+        spa-shell.ts           Auto-generated SPA shell stub (postinstall)
       db.ts                    D1 access helpers, config reads, CA key import/cache
       errors.ts                errorResponse helper
-      types.ts                 TrackerNodeRecord, NodeInfo, HeartbeatBody, Certificate
+      types.ts                 TrackerNodeRecord, PublicTrackerNodeRecord, NodeInfo, HeartbeatBody, Certificate, sanitizeNode
       env.d.ts                 Cloudflare env type declarations
     wrangler.template.jsonc    Worker config template
-  web/                         Vite React dashboard (Cloudflare Pages)
+  web/                         Vite React dashboard (Workers Assets)
     src/
       SpaApp.tsx               Root component
       components/
         RingVisualization.tsx  SVG ring diagram
         NodeTable.tsx          Node list
         StatsPanel.tsx         Aggregate metrics
+        NodeDetailPanel.tsx    Per-node ring-state drawer
+        LoginModal.tsx         Admin login dialog
       api.ts                   Tracker API client
       types.ts                 Shared frontend types
+      constants.ts             Refresh interval and other constants
+      utils.ts                 Shared utilities
 migrations/
   0001_initial.sql             Nodes and tracker_meta tables
   0002_auth.sql                cert_json, cert_expires_at columns; crl table
+  0003_region.sql              region column on nodes
+  0004_successor_list_capacity.sql  successor_list_capacity column on nodes
+  0005_v3_metrics.sql          maintenance_mode, cache_hits, cache_misses, cache_size, predecessor_list_size columns
 test/                          Vitest suites
 ```
 
@@ -276,14 +338,20 @@ pnpm run deploy         # deploy Worker + Pages to Cloudflare
 
 Copy `apps/api/wrangler.template.jsonc` to `wrangler.jsonc` and fill in your D1 `database_id` before deploying. Apply migrations with `pnpm run migrate:local` (local) or `pnpm run migrate:remote` (production).
 
-**Environment variables (Worker `vars`):**
+**Worker `vars` (set in `wrangler.jsonc`):**
 
 | Var | Default | Description |
 |-----|---------|-------------|
 | `MAX_NODES` | `1000` | Maximum nodes stored; evicts oldest by `last_seen` when exceeded |
 | `STALE_THRESHOLD_SECONDS` | `180` | Seconds without a heartbeat before a node is counted as stale |
-| `SERVE_SPA_FROM_WORKER` | `false` | Set to `true` to serve the SPA from the Worker instead of Pages |
-| `CA_PUBLIC_KEY_BASE64` | *(none)* | CA Ed25519 public key (base64url, 32 bytes); enables v2.0 cert verification when set. Use `wrangler secret put`. |
+| `SERVE_SPA_FROM_WORKER` | `false` | Set to `true` to serve the SPA from the Worker instead of Workers Assets |
+
+**Secrets Store bindings (configured via Cloudflare dashboard or `wrangler secrets-store`):**
+
+| Binding | Secret name | Description |
+|---------|-------------|-------------|
+| `CA_PUBLIC_KEY_BASE64` | `chord-dht-tracker-ca-public-key` | CA Ed25519 public key (base64url, 32 bytes); enables v2.0 cert verification when set |
+| `ADMIN_SECRET` | `chord-dht-tracker-admin-secret` | Shared token for admin API and dashboard login; if absent or `UNCONFIGURED`, admin auth is disabled |
 
 ## Chord Protocol Summary
 
