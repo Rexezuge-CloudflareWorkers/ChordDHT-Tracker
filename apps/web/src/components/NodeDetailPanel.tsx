@@ -104,8 +104,18 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                   ? <span className="text-xs text-gray-300">{node.region}</span>
                   : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
-              <Row label="Successor List Size">
-                {node.successor_list_size != null ? node.successor_list_size : isAdmin ? <NullValue /> : <RedactedValue />}
+              <Row label="Successor List">
+                {node.successor_list_size != null ? (
+                  node.successor_list_capacity != null ? (
+                    `${node.successor_list_size} / ${node.successor_list_capacity}`
+                  ) : (
+                    node.successor_list_size
+                  )
+                ) : isAdmin ? (
+                  <NullValue />
+                ) : (
+                  <RedactedValue />
+                )}
               </Row>
             </div>
           </div>

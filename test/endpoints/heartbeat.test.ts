@@ -11,6 +11,7 @@ const validBody = {
   successor_id: 'b'.repeat(40),
   predecessor_id: 'c'.repeat(40),
   successor_list_size: 3,
+  successor_list_capacity: 5,
   finger_table_coverage: 0.75,
   uptime_seconds: 300,
   maintenance_cycles: 5,

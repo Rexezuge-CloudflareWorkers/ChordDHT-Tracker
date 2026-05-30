@@ -8,6 +8,7 @@ export interface TrackerNodeRecord {
   successor_id: string | null;
   predecessor_id: string | null;
   successor_list_size: number | null;
+  successor_list_capacity: number | null;
   finger_table_coverage: number | null;
   uptime_seconds: number | null;
   maintenance_cycles: number | null;

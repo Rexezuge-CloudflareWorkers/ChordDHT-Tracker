@@ -115,6 +115,7 @@ All requests and responses use `Content-Type: application/json`. Node IDs are 40
   "successor_id": "<40-hex>",
   "predecessor_id": "<40-hex>",
   "successor_list_size": 3,
+  "successor_list_capacity": 5,
   "finger_table_coverage": 0.85,
   "uptime_seconds": 3600,
   "maintenance_cycles": 60,
@@ -296,7 +297,7 @@ This Tracker supports nodes that implement the Chord protocol as described in [S
 | `POST` | `/chord/find_successor` | Iterative successor lookup (returns `found`/`next_hop`) |
 | `GET` | `/chord/predecessor` | Returns current predecessor or `null` |
 | `POST` | `/chord/notify` | Stabilize: "I might be your predecessor" |
-| `GET` | `/chord/successor_list` | Returns `r = 3` successor entries |
+| `GET` | `/chord/successor_list` | Returns up to `r = 5` successor entries by default |
 | `POST` | `/chord/join` | Bootstrap entry point; internally calls `find_successor` |
 | `POST` | `/chord/leave` | Graceful leave notification to a neighbor |
 | `GET` | `/chord/finger_table` | Full 160-entry finger table (debug) |
