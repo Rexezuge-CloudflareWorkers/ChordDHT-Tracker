@@ -10,3 +10,4 @@ export { CRLGetRoute } from './tracker/crl/GET';
 export { CRLPostRoute } from './tracker/crl/POST';
 export { AdminVerifyGetRoute } from './tracker/admin/verify/GET';
 export { RegionsGetRoute } from './tracker/regions/GET';
+export { GeoGetRoute } from './tracker/geo/GET';
