@@ -18,6 +18,7 @@ export interface TrackerNodeRecord {
   successor_id: string | null;
   predecessor_id: string | null;
   successor_list_size: number | null;
+  successor_list_capacity: number | null;
   finger_table_coverage: number | null;
   uptime_seconds: number | null;
   maintenance_cycles: number | null;
@@ -28,10 +29,21 @@ export interface TrackerNodeRecord {
 
 export type PublicTrackerNodeRecord = Omit<
   TrackerNodeRecord,
-  'status' | 'uri' | 'joined_at' | 'last_seen' | 'report_count' | 'cert_expires_at' |
-  'successor_id' | 'predecessor_id' | 'cert_json' |
-  'successor_list_size' | 'finger_table_coverage' | 'uptime_seconds' | 'maintenance_cycles' |
-  'region'
+  | 'status'
+  | 'uri'
+  | 'joined_at'
+  | 'last_seen'
+  | 'report_count'
+  | 'cert_expires_at'
+  | 'successor_id'
+  | 'predecessor_id'
+  | 'cert_json'
+  | 'successor_list_size'
+  | 'successor_list_capacity'
+  | 'finger_table_coverage'
+  | 'uptime_seconds'
+  | 'maintenance_cycles'
+  | 'region'
 > & {
   status: null;
   uri: null;
@@ -43,6 +55,7 @@ export type PublicTrackerNodeRecord = Omit<
   predecessor_id: null;
   cert_json: null;
   successor_list_size: null;
+  successor_list_capacity: null;
   finger_table_coverage: null;
   uptime_seconds: null;
   maintenance_cycles: null;
@@ -64,6 +77,7 @@ export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNo
     predecessor_id: null,
     cert_json: null,
     successor_list_size: null,
+    successor_list_capacity: null,
     finger_table_coverage: null,
     uptime_seconds: null,
     maintenance_cycles: null,
@@ -81,6 +95,7 @@ export interface HeartbeatBody {
   successor_id?: string | null;
   predecessor_id?: string | null;
   successor_list_size?: number;
+  successor_list_capacity?: number;
   finger_table_coverage?: number;
   uptime_seconds?: number;
   maintenance_cycles?: number;

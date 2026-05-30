@@ -16,6 +16,7 @@ const node = {
   successor_id: null,
   predecessor_id: null,
   successor_list_size: null,
+  successor_list_capacity: null,
   finger_table_coverage: null,
   uptime_seconds: null,
   maintenance_cycles: null,
