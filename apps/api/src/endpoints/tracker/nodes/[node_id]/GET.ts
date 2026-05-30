@@ -4,6 +4,7 @@ import type { TrackerNodeRecord } from '@/types';
 import { sanitizeNode } from '@/types';
 import { errorResponse } from '@/errors';
 import { isAdmin } from '@/auth';
+import { parseNodeJsonColumns } from '@/db';
 
 const NODE_ID_REGEX = /^[0-9a-f]{40}$/;
 
@@ -23,7 +24,7 @@ class NodeGetRoute extends IBaseRoute {
     }
 
     const admin = await isAdmin(c.req.raw, c.env);
-    return c.json(sanitizeNode(node, admin));
+    return c.json(sanitizeNode(parseNodeJsonColumns(node), admin));
   }
 }
 

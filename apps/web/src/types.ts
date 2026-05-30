@@ -20,6 +20,10 @@ export interface TrackerNodeRecord {
   cache_misses: number | null;
   cache_size: number | null;
   predecessor_list_size: number | null;
+  successor_list: string[] | null;
+  predecessor_list: string[] | null;
+  rtt_samples: Record<string, number> | null;
+  finger_nodes: string[] | null;
 }
 
 export interface RegionsResponse {

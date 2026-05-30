@@ -1,4 +1,16 @@
 import { importEd25519PublicKey } from '@/auth';
+import type { TrackerNodeRecord } from '@/types';
+
+// Parse JSON TEXT columns that are stored as serialized strings in D1.
+export function parseNodeJsonColumns(node: TrackerNodeRecord): TrackerNodeRecord {
+  return {
+    ...node,
+    successor_list: node.successor_list ? JSON.parse(node.successor_list as string) : null,
+    predecessor_list: node.predecessor_list ? JSON.parse(node.predecessor_list as string) : null,
+    rtt_samples: node.rtt_samples ? JSON.parse(node.rtt_samples as string) : null,
+    finger_nodes: node.finger_nodes ? JSON.parse(node.finger_nodes as string) : null,
+  };
+}
 
 // Module-level cache: survives within a Worker isolate lifetime.
 let cachedCAKey: CryptoKey | null = null;
