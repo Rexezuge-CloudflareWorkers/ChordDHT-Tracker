@@ -76,12 +76,14 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
             <SectionLabel>Status &amp; Timing</SectionLabel>
             <div className="space-y-1.5">
               <Row label="Status">
-                <span
-                  className="px-2 py-0.5 rounded-full text-xs font-medium"
-                  style={{ backgroundColor: `${color}22`, color }}
-                >
-                  {node.status}
-                </span>
+                {node.status !== null ? (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-medium"
+                    style={{ backgroundColor: `${color}22`, color }}
+                  >
+                    {node.status}
+                  </span>
+                ) : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
               <Row label="Joined">
                 {node.joined_at !== null ? new Date(node.joined_at).toLocaleString() : isAdmin ? <NullValue /> : <RedactedValue />}
