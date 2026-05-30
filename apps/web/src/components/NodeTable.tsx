@@ -8,9 +8,10 @@ interface Props {
   selectedNodeId: string | null;
   onNodeSelect: (nodeId: string) => void;
   isAdmin: boolean;
+  staleCutoff?: Date | null;
 }
 
-export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin }: Props) {
+export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleCutoff }: Props) {
   const sorted = [...nodes].sort(
     (a, b) => new Date(b.last_seen ?? 0).getTime() - new Date(a.last_seen ?? 0).getTime(),
   );
@@ -43,7 +44,9 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin }: Prop
         </thead>
         <tbody>
           {sorted.map((node) => {
-            const color = STATUS_COLORS[node.status] ?? STATUS_COLORS['UNKNOWN'];
+            const isStale = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
+            const displayStatus = isStale ? 'STALE' : node.status;
+            const color = STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
             const isSelected = selectedNodeId === node.node_id;
             return (
               <tr
@@ -64,7 +67,7 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin }: Prop
                     className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
                     style={{ backgroundColor: `${color}22`, color }}
                   >
-                    {node.status}
+                    {displayStatus}
                   </span>
                 </td>
                 {isAdmin && (

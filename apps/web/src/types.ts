@@ -31,6 +31,7 @@ export interface StatsResponse {
   oldest_node_joined_at: string | null;
   newest_node_joined_at: string | null;
   tracker_uptime_seconds: number;
+  stale_threshold_seconds: number;
   stats_generated_at: string;
 }
 

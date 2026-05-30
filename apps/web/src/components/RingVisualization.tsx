@@ -8,6 +8,7 @@ interface Props {
   selectedNodeId: string | null;
   onNodeSelect: (nodeId: string) => void;
   isAdmin: boolean;
+  staleCutoff?: Date | null;
 }
 
 interface TooltipState {
@@ -28,7 +29,7 @@ const ARROW_MARKER_ID_HOVER = 'chord-arrow-hover';
 const LINK_COLOR = 'rgba(99, 102, 241, 0.45)';
 const LINK_COLOR_HOVER = 'rgba(165, 180, 252, 0.9)';
 
-export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin }: Props) {
+export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleCutoff }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
@@ -140,7 +141,9 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
           const angle = nodeIdToAngle(node.node_id);
           const x = CX + RING_R * Math.cos(angle);
           const y = CY + RING_R * Math.sin(angle);
-          const color = STATUS_COLORS[node.status] ?? STATUS_COLORS['UNKNOWN'];
+          const isStale = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
+          const displayStatus = isStale ? 'STALE' : node.status;
+          const color = STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
           const isSelected = selectedNodeId === node.node_id;
 
           return (
@@ -197,7 +200,9 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
           const { svgX, svgY, node } = tooltip;
           const tx = svgX + 14 + TOOLTIP_W > 595 ? svgX - TOOLTIP_W - 14 : svgX + 14;
           const ty = svgY + TOOLTIP_H > 585 ? svgY - TOOLTIP_H - 4 : svgY + 4;
-          const color = STATUS_COLORS[node.status] ?? STATUS_COLORS['UNKNOWN'];
+          const isStaleTooltip = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
+          const tooltipStatus = isStaleTooltip ? 'STALE' : node.status;
+          const color = STATUS_COLORS[tooltipStatus] ?? STATUS_COLORS['UNKNOWN'];
           return (
             <g style={{ pointerEvents: 'none' }}>
               <rect x={tx} y={ty} width={TOOLTIP_W} height={TOOLTIP_H} rx={6} fill="#1f2937" stroke="#374151" strokeWidth={1} />
@@ -208,7 +213,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
                 {node.uri !== null ? node.uri.replace('https://', '') : '******'}
               </text>
               <text x={tx + 10} y={ty + 50} fontSize={9} fill={color}>
-                {node.status}
+                {tooltipStatus}
               </text>
               <text x={tx + 10} y={ty + 65} fontSize={9} fill="#6b7280">
                 Last seen: {node.last_seen !== null ? formatRelativeTime(node.last_seen) : '******'}

@@ -28,6 +28,13 @@ export default function SpaApp() {
 
   const selectedNode = nodes.find(n => n.node_id === selectedNodeId) ?? null;
   const knownNodeIds = useMemo(() => new Set(nodes.map(n => n.node_id)), [nodes]);
+  const staleCutoff = useMemo(
+    () =>
+      stats?.stats_generated_at && stats?.stale_threshold_seconds
+        ? new Date(new Date(stats.stats_generated_at).getTime() - stats.stale_threshold_seconds * 1000)
+        : null,
+    [stats],
+  );
 
   // refresh reads token from ref so the function reference stays stable,
   // avoiding interval teardown/restart on every login/logout.
@@ -150,6 +157,7 @@ export default function SpaApp() {
               selectedNodeId={selectedNodeId}
               onNodeSelect={setSelectedNodeId}
               isAdmin={isAdmin}
+              staleCutoff={staleCutoff}
             />
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col">
@@ -175,6 +183,7 @@ export default function SpaApp() {
               selectedNodeId={selectedNodeId}
               onNodeSelect={setSelectedNodeId}
               isAdmin={isAdmin}
+              staleCutoff={staleCutoff}
             />
           </div>
         </div>
