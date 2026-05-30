@@ -31,7 +31,7 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
     });
   };
 
-  const color = STATUS_COLORS[node.status] ?? STATUS_COLORS['UNKNOWN'];
+  const color = STATUS_COLORS[node.status ?? 'UNKNOWN'] ?? STATUS_COLORS['UNKNOWN'];
   const certExpiresAt = node.cert_expires_at != null ? new Date(node.cert_expires_at * 1000) : null;
   const certExpired = certExpiresAt != null && certExpiresAt < new Date();
 

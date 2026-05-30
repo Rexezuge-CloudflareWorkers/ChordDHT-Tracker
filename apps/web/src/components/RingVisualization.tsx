@@ -142,8 +142,8 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
           const x = CX + RING_R * Math.cos(angle);
           const y = CY + RING_R * Math.sin(angle);
           const isStale = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
-          const displayStatus = isStale ? 'STALE' : node.status;
-          const color = node.last_seen === null ? '#ffffff' : STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
+          const displayStatus = isStale ? 'STALE' : (node.status ?? 'UNKNOWN');
+          const color = node.status === null ? '#ffffff' : STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
           const isSelected = selectedNodeId === node.node_id;
 
           return (
@@ -201,8 +201,8 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
           const tx = svgX + 14 + TOOLTIP_W > 595 ? svgX - TOOLTIP_W - 14 : svgX + 14;
           const ty = svgY + TOOLTIP_H > 585 ? svgY - TOOLTIP_H - 4 : svgY + 4;
           const isStaleTooltip = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
-          const tooltipStatus = isStaleTooltip ? 'STALE' : node.status;
-          const color = node.last_seen === null ? '#ffffff' : STATUS_COLORS[tooltipStatus] ?? STATUS_COLORS['UNKNOWN'];
+          const tooltipStatus = isStaleTooltip ? 'STALE' : (node.status ?? 'UNKNOWN');
+          const color = node.status === null ? '#ffffff' : STATUS_COLORS[tooltipStatus] ?? STATUS_COLORS['UNKNOWN'];
           return (
             <g style={{ pointerEvents: 'none' }}>
               <rect x={tx} y={ty} width={TOOLTIP_W} height={TOOLTIP_H} rx={6} fill="#1f2937" stroke="#374151" strokeWidth={1} />
