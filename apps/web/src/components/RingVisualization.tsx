@@ -12,8 +12,6 @@ interface Props {
 }
 
 interface TooltipState {
-  svgX: number;
-  svgY: number;
   node: TrackerNodeRecord;
 }
 
@@ -21,8 +19,6 @@ const CX = 300;
 const CY = 300;
 const RING_R = 220;
 const DOT_R = 8;
-const TOOLTIP_W = 220;
-const TOOLTIP_H = 165;
 
 function rttColor(ms: number | undefined | null, alpha = 1): string {
   if (ms == null) return `rgba(99,102,241,${alpha})`;
@@ -269,12 +265,8 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
                 stroke={isSelected ? '#ffffff' : '#101319'}
                 strokeWidth={isSelected ? 2.5 : 2}
                 style={{ cursor: 'pointer' }}
-                onMouseEnter={(e) => {
-                  const svg = (e.currentTarget as SVGElement).closest('svg')!;
-                  const rect = svg.getBoundingClientRect();
-                  const svgX = ((e.clientX - rect.left) / rect.width) * 600;
-                  const svgY = ((e.clientY - rect.top) / rect.height) * 600;
-                  setTooltip({ svgX, svgY, node });
+                onMouseEnter={() => {
+                  setTooltip({ node });
                   setHoveredNodeId(node.node_id);
                 }}
                 onMouseLeave={() => setHoveredNodeId(null)}
@@ -296,62 +288,47 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
           );
         })}
 
-        {/* Tooltip */}
-        {tooltip && (() => {
-          const { svgX, svgY, node } = tooltip;
-          const tx = svgX + 14 + TOOLTIP_W > 595 ? svgX - TOOLTIP_W - 14 : svgX + 14;
-          const ty = svgY + TOOLTIP_H > 585 ? svgY - TOOLTIP_H - 4 : svgY + 4;
-          const isStaleTooltip = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
-          const tooltipStatus = isStaleTooltip ? 'STALE' : (node.status ?? 'UNKNOWN');
-          const statusColor = node.status === null ? '#ffffff' : STATUS_COLORS[tooltipStatus] ?? STATUS_COLORS['UNKNOWN'];
-          const avg = avgRTT(node.rtt_samples);
-          const succListLen = node.successor_list?.length ?? null;
-          const succListCap = node.successor_list_capacity;
-          return (
-            <g style={{ pointerEvents: 'none' }}>
-              <rect x={tx} y={ty} width={TOOLTIP_W} height={TOOLTIP_H} rx={6} fill="#1f2937" stroke="#374151" strokeWidth={1} />
-              <text x={tx + 10} y={ty + 18} fontSize={10} fill="#f9fafb" fontFamily="monospace">
-                {node.node_id.slice(0, 22)}…
-              </text>
-              <text x={tx + 10} y={ty + 34} fontSize={9} fill="#9ca3af" fontFamily="monospace">
-                {node.uri !== null ? node.uri.replace('https://', '') : '******'}
-              </text>
-              <text x={tx + 10} y={ty + 50} fontSize={9} fill={statusColor}>
-                {tooltipStatus}
-              </text>
-              <text x={tx + 10} y={ty + 65} fontSize={9} fill="#6b7280">
-                Last seen: {node.last_seen !== null ? formatRelativeTime(node.last_seen) : '******'}
-              </text>
-              <text x={tx + 10} y={ty + 80} fontSize={9} fill="#6b7280">
-                Reports: {node.report_count !== null ? node.report_count : '******'}
-              </text>
-              <text x={tx + 10} y={ty + 95} fontSize={9} fill="#6b7280">
-                Successor: {node.successor_id ? truncateNodeId(node.successor_id) : isAdmin ? '—' : '******'}
-              </text>
-              <text x={tx + 10} y={ty + 110} fontSize={9} fill="#6b7280">
-                Predecessor: {node.predecessor_id ? truncateNodeId(node.predecessor_id) : isAdmin ? '—' : '******'}
-              </text>
-              <text x={tx + 10} y={ty + 125} fontSize={9} fill="#6b7280">
-                {succListLen !== null && succListCap !== null
-                  ? `Succ list: ${succListLen}/${succListCap}`
-                  : succListLen !== null
-                    ? `Succ list: ${succListLen}`
-                    : node.successor_list_size !== null
-                      ? `Succ list: ${node.successor_list_size}${succListCap ? `/${succListCap}` : ''}`
-                      : isAdmin ? 'Succ list: —' : ''}
-              </text>
-              <text x={tx + 10} y={ty + 140} fontSize={9} fill={avg !== null ? rttColor(avg) : '#6b7280'}>
-                {avg !== null ? `Avg RTT: ${Math.round(avg)}ms` : isAdmin ? 'RTT: —' : ''}
-              </text>
-              <text x={tx + 10} y={ty + 155} fontSize={9} fill="#6b7280">
-                {node.finger_table_coverage !== null
-                  ? `Finger coverage: ${Math.round(node.finger_table_coverage * 100)}%`
-                  : isAdmin ? 'Finger: —' : ''}
-              </text>
-            </g>
-          );
-        })()}
       </svg>
+
+      {/* Tooltip — fixed bottom-right of the ring container */}
+      {tooltip && (() => {
+        const { node } = tooltip;
+        const isStaleTooltip = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
+        const tooltipStatus = isStaleTooltip ? 'STALE' : (node.status ?? 'UNKNOWN');
+        const statusColor = node.status === null ? '#ffffff' : STATUS_COLORS[tooltipStatus] ?? STATUS_COLORS['UNKNOWN'];
+        const avg = avgRTT(node.rtt_samples);
+        const succListLen = node.successor_list?.length ?? null;
+        const succListCap = node.successor_list_capacity;
+        return (
+          <div
+            className="absolute bottom-8 right-2 w-52 rounded-md border border-gray-700 bg-gray-800 p-2.5 text-xs font-mono pointer-events-none"
+            style={{ lineHeight: '1.6' }}
+          >
+            <div className="text-gray-100 truncate">{node.node_id.slice(0, 22)}…</div>
+            <div className="text-gray-400 truncate">{node.uri !== null ? node.uri.replace('https://', '') : '******'}</div>
+            <div style={{ color: statusColor }}>{tooltipStatus}</div>
+            <div className="text-gray-500">Last seen: {node.last_seen !== null ? formatRelativeTime(node.last_seen) : '******'}</div>
+            <div className="text-gray-500">Reports: {node.report_count !== null ? node.report_count : '******'}</div>
+            <div className="text-gray-500">Successor: {node.successor_id ? truncateNodeId(node.successor_id) : isAdmin ? '—' : '******'}</div>
+            <div className="text-gray-500">Predecessor: {node.predecessor_id ? truncateNodeId(node.predecessor_id) : isAdmin ? '—' : '******'}</div>
+            <div className="text-gray-500">
+              {succListLen !== null && succListCap !== null
+                ? `Succ list: ${succListLen}/${succListCap}`
+                : succListLen !== null
+                  ? `Succ list: ${succListLen}`
+                  : node.successor_list_size !== null
+                    ? `Succ list: ${node.successor_list_size}${succListCap ? `/${succListCap}` : ''}`
+                    : isAdmin ? 'Succ list: —' : ''}
+            </div>
+            {avg !== null
+              ? <div style={{ color: rttColor(avg) }}>Avg RTT: {Math.round(avg)}ms</div>
+              : isAdmin ? <div className="text-gray-500">RTT: —</div> : null}
+            {node.finger_table_coverage !== null
+              ? <div className="text-gray-500">Finger coverage: {Math.round(node.finger_table_coverage * 100)}%</div>
+              : isAdmin ? <div className="text-gray-500">Finger: —</div> : null}
+          </div>
+        );
+      })()}
 
       {/* Legend */}
       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 px-2 text-xs text-gray-500">
