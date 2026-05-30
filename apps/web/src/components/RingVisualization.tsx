@@ -143,7 +143,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
           const y = CY + RING_R * Math.sin(angle);
           const isStale = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
           const displayStatus = isStale ? 'STALE' : node.status;
-          const color = STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
+          const color = node.last_seen === null ? '#ffffff' : STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
           const isSelected = selectedNodeId === node.node_id;
 
           return (
@@ -202,7 +202,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
           const ty = svgY + TOOLTIP_H > 585 ? svgY - TOOLTIP_H - 4 : svgY + 4;
           const isStaleTooltip = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
           const tooltipStatus = isStaleTooltip ? 'STALE' : node.status;
-          const color = STATUS_COLORS[tooltipStatus] ?? STATUS_COLORS['UNKNOWN'];
+          const color = node.last_seen === null ? '#ffffff' : STATUS_COLORS[tooltipStatus] ?? STATUS_COLORS['UNKNOWN'];
           return (
             <g style={{ pointerEvents: 'none' }}>
               <rect x={tx} y={ty} width={TOOLTIP_W} height={TOOLTIP_H} rx={6} fill="#1f2937" stroke="#374151" strokeWidth={1} />
