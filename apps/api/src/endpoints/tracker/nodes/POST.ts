@@ -17,7 +17,8 @@ class NodesPostRoute extends IBaseRoute {
     }
 
     const { node_id, uri, certificate, region } = body;
-    const regionValue = typeof region === 'string' && region.length > 0 ? region : null;
+    const cfColo = (c.req.raw as Request & { cf?: { colo?: string } }).cf?.colo ?? null;
+    const effectiveRegion = (typeof region === 'string' && region.length > 0) ? region : cfColo;
     if (typeof node_id !== 'string' || !NODE_ID_REGEX.test(node_id)) {
       return errorResponse('INVALID_REQUEST', 'node_id must be a 40-character lowercase hex string', 400);
     }
@@ -61,7 +62,7 @@ class NodesPostRoute extends IBaseRoute {
          cert_expires_at = COALESCE(excluded.cert_expires_at, cert_expires_at),
          region = COALESCE(excluded.region, region)`,
     )
-      .bind(node_id, uri, now, now, certJson, certExpiresAt, regionValue)
+      .bind(node_id, uri, now, now, certJson, certExpiresAt, effectiveRegion)
       .run();
 
     await evictOverLimit(c.env.DB, getMaxNodes(c.env));
@@ -70,6 +71,7 @@ class NodesPostRoute extends IBaseRoute {
 
     return c.json({
       registered: true,
+      region: effectiveRegion ?? null,
       known_nodes_count: countResult?.count ?? 0,
       message: 'Node registered successfully',
     });
