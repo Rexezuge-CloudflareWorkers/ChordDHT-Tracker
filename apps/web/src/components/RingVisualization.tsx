@@ -52,9 +52,21 @@ function lineVis(hoveredId: string | null, sourceId: string, targetId: string, b
   return hoveredId === sourceId || hoveredId === targetId ? base : dim;
 }
 
+type LayerKey = 'primarySuccessor' | 'backupSuccessors' | 'predecessors' | 'fingerTable';
+
 export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleCutoff }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [visibleLayers, setVisibleLayers] = useState<Record<LayerKey, boolean>>({
+    primarySuccessor: true,
+    backupSuccessors: true,
+    predecessors: true,
+    fingerTable: true,
+  });
+
+  function toggleLayer(key: LayerKey) {
+    setVisibleLayers(prev => ({ ...prev, [key]: !prev[key] }));
+  }
 
   if (nodes.length === 0) {
     return (
@@ -118,7 +130,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         </text>
 
         {/* ── Layer 1: Backup successor lines (thin, RTT-colored) ── */}
-        {nodes.map((node) => {
+        {visibleLayers.backupSuccessors && nodes.map((node) => {
           if (!node.successor_list || node.successor_list.length <= 1) return null;
           // successor_list[0] is the primary (same as successor_id), draw [1:]
           return node.successor_list.slice(1).map((targetId) => {
@@ -146,7 +158,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         })}
 
         {/* ── Layer 2: Primary successor lines (thick, RTT-colored) ── */}
-        {nodes.map((node) => {
+        {visibleLayers.primarySuccessor && nodes.map((node) => {
           if (!node.successor_id || !nodeIdSet.has(node.successor_id)) return null;
           if (node.successor_id === node.node_id) return null;
           const from = nodePos(node.node_id);
@@ -172,7 +184,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         })}
 
         {/* ── Layer 3: Predecessor list lines (dashed, violet) ── */}
-        {nodes.map((node) => {
+        {visibleLayers.predecessors && nodes.map((node) => {
           if (!node.predecessor_list || node.predecessor_list.length === 0) return null;
           return node.predecessor_list.map((predId) => {
             if (!nodeIdSet.has(predId) || predId === node.node_id) return null;
@@ -198,7 +210,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         })}
 
         {/* ── Layer 4: Finger table paths (curved, hover-only) ── */}
-        {hoveredNode && hoveredNode.finger_nodes && (() => {
+        {visibleLayers.fingerTable && hoveredNode && hoveredNode.finger_nodes && (() => {
           const from = nodePos(hoveredNode.node_id);
           if (!from) return null;
           return hoveredNode.finger_nodes.map((fingerId) => {
@@ -330,24 +342,30 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         );
       })()}
 
-      {/* Legend */}
+      {/* Legend / layer toggles */}
       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 px-2 text-xs text-gray-500">
-        <span className="flex items-center gap-1">
-          <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="rgba(99,102,241,0.7)" strokeWidth="2" markerEnd="url(#arrow-primary)" /></svg>
-          Primary successor
-        </span>
-        <span className="flex items-center gap-1">
-          <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="rgba(99,102,241,0.5)" strokeWidth="0.8" /></svg>
-          Backup successors
-        </span>
-        <span className="flex items-center gap-1">
-          <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="#a78bfa" strokeWidth="0.8" strokeDasharray="4 3" /></svg>
-          Predecessors
-        </span>
-        <span className="flex items-center gap-1">
-          <svg width="24" height="8"><path d="M2,6 Q12,1 22,4" fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="1" /></svg>
-          Finger table (hover)
-        </span>
+        {(
+          [
+            { key: 'primarySuccessor', label: 'Primary successor', icon: <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="rgba(99,102,241,0.7)" strokeWidth="2" /></svg> },
+            { key: 'backupSuccessors', label: 'Backup successors', icon: <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="rgba(99,102,241,0.5)" strokeWidth="0.8" /></svg> },
+            { key: 'predecessors',     label: 'Predecessors',      icon: <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="#a78bfa" strokeWidth="0.8" strokeDasharray="4 3" /></svg> },
+            { key: 'fingerTable',      label: 'Finger table (hover)', icon: <svg width="24" height="8"><path d="M2,6 Q12,1 22,4" fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="1" /></svg> },
+          ] as { key: LayerKey; label: string; icon: React.ReactNode }[]
+        ).map(({ key, label, icon }) => (
+          <label
+            key={key}
+            className={`flex items-center gap-1 cursor-pointer transition-opacity ${visibleLayers[key] ? '' : 'opacity-35'}`}
+          >
+            <input
+              type="checkbox"
+              checked={visibleLayers[key]}
+              onChange={() => toggleLayer(key)}
+              className="accent-indigo-500 cursor-pointer"
+            />
+            {icon}
+            {label}
+          </label>
+        ))}
         <span className="flex items-center gap-1">
           <svg width="36" height="8">
             <line x1="0" y1="4" x2="8" y2="4" stroke="#22c55e" strokeWidth="2" />
