@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { TrackerNodeRecord } from '../types';
 import { nodeIdToAngle, truncateNodeId, formatRelativeTime } from '../utils';
 import { STATUS_COLORS } from '../constants';
@@ -15,10 +15,20 @@ interface TooltipState {
   node: TrackerNodeRecord;
 }
 
+interface Viewport {
+  zoom: number;
+  panX: number;
+  panY: number;
+}
+
+type LayerKey = 'primarySuccessor' | 'backupSuccessors' | 'predecessors' | 'fingerTable';
+
 const CX = 300;
 const CY = 300;
 const RING_R = 220;
 const DOT_R = 8;
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 12;
 
 function rttColor(ms: number | undefined | null, alpha = 1): string {
   if (ms == null) return `rgba(99,102,241,${alpha})`;
@@ -52,8 +62,6 @@ function lineVis(hoveredId: string | null, sourceId: string, targetId: string, b
   return hoveredId === sourceId || hoveredId === targetId ? base : dim;
 }
 
-type LayerKey = 'primarySuccessor' | 'backupSuccessors' | 'predecessors' | 'fingerTable';
-
 export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleCutoff }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -63,9 +71,80 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
     predecessors: true,
     fingerTable: true,
   });
+  const [viewport, setViewport] = useState<Viewport>({ zoom: 1, panX: 0, panY: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number } | null>(null);
+  const hasDraggedRef = useRef(false);
+
+  // Non-passive wheel listener so we can preventDefault and block page scroll.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = svg.getBoundingClientRect();
+      const svgX = ((e.clientX - rect.left) / rect.width) * 600;
+      const svgY = ((e.clientY - rect.top) / rect.height) * 600;
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      setViewport(prev => {
+        const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prev.zoom * factor));
+        return {
+          zoom: newZoom,
+          panX: svgX - (svgX - prev.panX) * (newZoom / prev.zoom),
+          panY: svgY - (svgY - prev.panY) * (newZoom / prev.zoom),
+        };
+      });
+    };
+    svg.addEventListener('wheel', onWheel, { passive: false });
+    return () => svg.removeEventListener('wheel', onWheel);
+  }, []);
 
   function toggleLayer(key: LayerKey) {
     setVisibleLayers(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function resetViewport() {
+    setViewport({ zoom: 1, panX: 0, panY: 0 });
+  }
+
+  // Zoom centred on the ring centre.
+  function zoomBy(factor: number) {
+    setViewport(prev => {
+      const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prev.zoom * factor));
+      const svgCX = prev.panX + CX * prev.zoom;
+      const svgCY = prev.panY + CY * prev.zoom;
+      return { zoom: newZoom, panX: svgCX - CX * newZoom, panY: svgCY - CY * newZoom };
+    });
+  }
+
+  function handleMouseDown(e: React.MouseEvent<SVGSVGElement>) {
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPanX: viewport.panX,
+      startPanY: viewport.panY,
+    };
+    hasDraggedRef.current = false;
+    setIsDragging(true);
+  }
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (!dragRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const scale = 600 / rect.width;
+    const dx = (e.clientX - dragRef.current.startX) * scale;
+    const dy = (e.clientY - dragRef.current.startY) * scale;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) hasDraggedRef.current = true;
+    const { startPanX, startPanY } = dragRef.current;
+    setViewport(prev => ({ ...prev, panX: startPanX + dx, panY: startPanY + dy }));
+  }
+
+  function handleMouseUp() {
+    dragRef.current = null;
+    hasDraggedRef.current = false;
+    setIsDragging(false);
   }
 
   if (nodes.length === 0) {
@@ -88,12 +167,25 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
     return { x: CX + RING_R * Math.cos(a), y: CY + RING_R * Math.sin(a) };
   }
 
+  const { zoom, panX, panY } = viewport;
+
   return (
     <div className="relative select-none">
       <svg
+        ref={svgRef}
         viewBox="0 0 600 600"
         className="w-full"
-        onMouseLeave={() => { setTooltip(null); setHoveredNodeId(null); }}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => {
+          setTooltip(null);
+          setHoveredNodeId(null);
+          dragRef.current = null;
+          hasDraggedRef.current = false;
+          setIsDragging(false);
+        }}
       >
         <defs>
           {/* context-stroke: arrowhead inherits the line's stroke color */}
@@ -108,198 +200,200 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
           </marker>
         </defs>
 
-        {/* Ring */}
-        <circle cx={CX} cy={CY} r={RING_R} fill="none" stroke="#374151" strokeWidth={1.5} />
+        <g transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
+          {/* Ring */}
+          <circle cx={CX} cy={CY} r={RING_R} fill="none" stroke="#374151" strokeWidth={1.5} />
 
-        {/* Cardinal tick marks */}
-        {[0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((a, i) => (
-          <line
-            key={i}
-            x1={CX + (RING_R - 7) * Math.cos(a - Math.PI / 2)}
-            y1={CY + (RING_R - 7) * Math.sin(a - Math.PI / 2)}
-            x2={CX + (RING_R + 7) * Math.cos(a - Math.PI / 2)}
-            y2={CY + (RING_R + 7) * Math.sin(a - Math.PI / 2)}
-            stroke="#4b5563"
-            strokeWidth={1.5}
-          />
-        ))}
-
-        {/* ID=0 label at top */}
-        <text x={CX} y={CY - RING_R - 14} textAnchor="middle" fontSize={10} fill="#4b5563">
-          0x0000…
-        </text>
-
-        {/* ── Layer 1: Backup successor lines (thin, RTT-colored) ── */}
-        {visibleLayers.backupSuccessors && nodes.map((node) => {
-          if (!node.successor_list || node.successor_list.length <= 1) return null;
-          // successor_list[0] is the primary (same as successor_id), draw [1:]
-          return node.successor_list.slice(1).map((targetId) => {
-            if (!nodeIdSet.has(targetId) || targetId === node.node_id) return null;
-            const from = nodePos(node.node_id);
-            const to = nodePos(targetId);
-            if (!from || !to) return null;
-            const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 3);
-            const rtt = node.rtt_samples?.[targetId] ?? null;
-            const color = rttColor(rtt, 0.55);
-            const opacity = lineVis(hoveredNodeId, node.node_id, targetId, 1, 0.04);
-            return (
-              <line
-                key={`succ-backup-${node.node_id}-${targetId}`}
-                x1={from.x} y1={from.y}
-                x2={end.x} y2={end.y}
-                stroke={color}
-                strokeWidth={0.8}
-                opacity={opacity}
-                markerEnd="url(#arrow-thin)"
-                style={{ pointerEvents: 'none' }}
-              />
-            );
-          });
-        })}
-
-        {/* ── Layer 2: Primary successor lines (thick, RTT-colored) ── */}
-        {visibleLayers.primarySuccessor && nodes.map((node) => {
-          if (!node.successor_id || !nodeIdSet.has(node.successor_id)) return null;
-          if (node.successor_id === node.node_id) return null;
-          const from = nodePos(node.node_id);
-          const to = nodePos(node.successor_id);
-          if (!from || !to) return null;
-          const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 4);
-          const rtt = node.rtt_samples?.[node.successor_id] ?? null;
-          const isHovered = hoveredNodeId === node.node_id || hoveredNodeId === node.successor_id;
-          const color = rttColor(rtt, isHovered ? 0.95 : 0.7);
-          const opacity = lineVis(hoveredNodeId, node.node_id, node.successor_id, 1, 0.04);
-          return (
+          {/* Cardinal tick marks */}
+          {[0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((a, i) => (
             <line
-              key={`succ-primary-${node.node_id}`}
-              x1={from.x} y1={from.y}
-              x2={end.x} y2={end.y}
-              stroke={color}
-              strokeWidth={isHovered ? 2.5 : 2}
-              opacity={opacity}
-              markerEnd="url(#arrow-primary)"
-              style={{ pointerEvents: 'none' }}
+              key={i}
+              x1={CX + (RING_R - 7) * Math.cos(a - Math.PI / 2)}
+              y1={CY + (RING_R - 7) * Math.sin(a - Math.PI / 2)}
+              x2={CX + (RING_R + 7) * Math.cos(a - Math.PI / 2)}
+              y2={CY + (RING_R + 7) * Math.sin(a - Math.PI / 2)}
+              stroke="#4b5563"
+              strokeWidth={1.5}
             />
-          );
-        })}
+          ))}
 
-        {/* ── Layer 3: Predecessor list lines (dashed, violet) ── */}
-        {visibleLayers.predecessors && nodes.map((node) => {
-          if (!node.predecessor_list || node.predecessor_list.length === 0) return null;
-          return node.predecessor_list.map((predId) => {
-            if (!nodeIdSet.has(predId) || predId === node.node_id) return null;
+          {/* ID=0 label at top */}
+          <text x={CX} y={CY - RING_R - 14} textAnchor="middle" fontSize={10} fill="#4b5563">
+            0x0000…
+          </text>
+
+          {/* ── Layer 1: Backup successor lines (thin, RTT-colored) ── */}
+          {visibleLayers.backupSuccessors && nodes.map((node) => {
+            if (!node.successor_list || node.successor_list.length <= 1) return null;
+            // successor_list[0] is the primary (same as successor_id), draw [1:]
+            return node.successor_list.slice(1).map((targetId) => {
+              if (!nodeIdSet.has(targetId) || targetId === node.node_id) return null;
+              const from = nodePos(node.node_id);
+              const to = nodePos(targetId);
+              if (!from || !to) return null;
+              const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 3);
+              const rtt = node.rtt_samples?.[targetId] ?? null;
+              const color = rttColor(rtt, 0.55);
+              const opacity = lineVis(hoveredNodeId, node.node_id, targetId, 1, 0.04);
+              return (
+                <line
+                  key={`succ-backup-${node.node_id}-${targetId}`}
+                  x1={from.x} y1={from.y}
+                  x2={end.x} y2={end.y}
+                  stroke={color}
+                  strokeWidth={0.8}
+                  opacity={opacity}
+                  markerEnd="url(#arrow-thin)"
+                  style={{ pointerEvents: 'none' }}
+                />
+              );
+            });
+          })}
+
+          {/* ── Layer 2: Primary successor lines (thick, RTT-colored) ── */}
+          {visibleLayers.primarySuccessor && nodes.map((node) => {
+            if (!node.successor_id || !nodeIdSet.has(node.successor_id)) return null;
+            if (node.successor_id === node.node_id) return null;
             const from = nodePos(node.node_id);
-            const to = nodePos(predId);
+            const to = nodePos(node.successor_id);
             if (!from || !to) return null;
-            const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 3);
-            const opacity = lineVis(hoveredNodeId, node.node_id, predId, 0.5, 0.03);
+            const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 4);
+            const rtt = node.rtt_samples?.[node.successor_id] ?? null;
+            const isHovered = hoveredNodeId === node.node_id || hoveredNodeId === node.successor_id;
+            const color = rttColor(rtt, isHovered ? 0.95 : 0.7);
+            const opacity = lineVis(hoveredNodeId, node.node_id, node.successor_id, 1, 0.04);
             return (
               <line
-                key={`pred-${node.node_id}-${predId}`}
+                key={`succ-primary-${node.node_id}`}
                 x1={from.x} y1={from.y}
                 x2={end.x} y2={end.y}
-                stroke="#a78bfa"
-                strokeWidth={0.8}
-                strokeDasharray="4 3"
-                opacity={opacity}
-                markerEnd="url(#arrow-dashed)"
-                style={{ pointerEvents: 'none' }}
-              />
-            );
-          });
-        })}
-
-        {/* ── Layer 4: Finger table paths (curved, hover-only) ── */}
-        {visibleLayers.fingerTable && hoveredNode && hoveredNode.finger_nodes && (() => {
-          const from = nodePos(hoveredNode.node_id);
-          if (!from) return null;
-          return hoveredNode.finger_nodes.map((fingerId) => {
-            if (!nodeIdSet.has(fingerId) || fingerId === hoveredNode.node_id) return null;
-            const to = nodePos(fingerId);
-            if (!to) return null;
-            const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 3);
-            const rtt = hoveredNode.rtt_samples?.[fingerId] ?? null;
-            const color = rttColor(rtt, 0.75);
-            return (
-              <path
-                key={`finger-${hoveredNode.node_id}-${fingerId}`}
-                d={`M ${from.x} ${from.y} Q ${CX} ${CY} ${end.x} ${end.y}`}
-                fill="none"
                 stroke={color}
-                strokeWidth={1}
-                markerEnd="url(#arrow-thin)"
+                strokeWidth={isHovered ? 2.5 : 2}
+                opacity={opacity}
+                markerEnd="url(#arrow-primary)"
                 style={{ pointerEvents: 'none' }}
               />
             );
-          });
-        })()}
+          })}
 
-        {/* ── Node dots (including RTT glow ring) ── */}
-        {nodes.map((node) => {
-          const angle = nodeIdToAngle(node.node_id);
-          const x = CX + RING_R * Math.cos(angle);
-          const y = CY + RING_R * Math.sin(angle);
-          const isStale = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
-          const displayStatus = isStale ? 'STALE' : (node.status ?? 'UNKNOWN');
-          const color = node.status === null ? '#ffffff' : STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
-          const isSelected = selectedNodeId === node.node_id;
-          const avg = avgRTT(node.rtt_samples);
-
-          return (
-            <g key={node.node_id}>
-              {/* RTT outer glow ring */}
-              {avg !== null && (
-                <circle
-                  cx={x} cy={y}
-                  r={DOT_R + 5}
-                  fill="none"
-                  stroke={rttColor(avg)}
-                  strokeWidth={2}
-                  opacity={0.35}
+          {/* ── Layer 3: Predecessor list lines (dashed, violet) ── */}
+          {visibleLayers.predecessors && nodes.map((node) => {
+            if (!node.predecessor_list || node.predecessor_list.length === 0) return null;
+            return node.predecessor_list.map((predId) => {
+              if (!nodeIdSet.has(predId) || predId === node.node_id) return null;
+              const from = nodePos(node.node_id);
+              const to = nodePos(predId);
+              if (!from || !to) return null;
+              const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 3);
+              const opacity = lineVis(hoveredNodeId, node.node_id, predId, 0.5, 0.03);
+              return (
+                <line
+                  key={`pred-${node.node_id}-${predId}`}
+                  x1={from.x} y1={from.y}
+                  x2={end.x} y2={end.y}
+                  stroke="#a78bfa"
+                  strokeWidth={0.8}
+                  strokeDasharray="4 3"
+                  opacity={opacity}
+                  markerEnd="url(#arrow-dashed)"
                   style={{ pointerEvents: 'none' }}
                 />
-              )}
-              {isSelected && (
-                <circle
-                  cx={x} cy={y}
-                  r={DOT_R + (avg !== null ? 10 : 5)}
+              );
+            });
+          })}
+
+          {/* ── Layer 4: Finger table paths (curved, hover-only) ── */}
+          {visibleLayers.fingerTable && hoveredNode && hoveredNode.finger_nodes && (() => {
+            const from = nodePos(hoveredNode.node_id);
+            if (!from) return null;
+            return hoveredNode.finger_nodes.map((fingerId) => {
+              if (!nodeIdSet.has(fingerId) || fingerId === hoveredNode.node_id) return null;
+              const to = nodePos(fingerId);
+              if (!to) return null;
+              const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 3);
+              const rtt = hoveredNode.rtt_samples?.[fingerId] ?? null;
+              const color = rttColor(rtt, 0.75);
+              return (
+                <path
+                  key={`finger-${hoveredNode.node_id}-${fingerId}`}
+                  d={`M ${from.x} ${from.y} Q ${CX} ${CY} ${end.x} ${end.y}`}
                   fill="none"
-                  stroke="#6366f1"
-                  strokeWidth={2}
-                  opacity={0.5}
+                  stroke={color}
+                  strokeWidth={1}
+                  markerEnd="url(#arrow-thin)"
                   style={{ pointerEvents: 'none' }}
                 />
-              )}
-              <circle
-                cx={x} cy={y}
-                r={DOT_R}
-                fill={color}
-                stroke={isSelected ? '#ffffff' : '#101319'}
-                strokeWidth={isSelected ? 2.5 : 2}
-                style={{ cursor: 'pointer' }}
-                onMouseEnter={() => {
-                  setTooltip({ node });
-                  setHoveredNodeId(node.node_id);
-                }}
-                onMouseLeave={() => setHoveredNodeId(null)}
-                onClick={() => onNodeSelect(node.node_id)}
-              />
-              {nodes.length <= 24 && (
-                <text
-                  x={x + (x > CX ? DOT_R + 4 : -(DOT_R + 4))}
-                  y={y + 4}
-                  fontSize={9}
-                  fill="#9ca3af"
-                  textAnchor={x > CX ? 'start' : 'end'}
-                  style={{ pointerEvents: 'none' }}
-                >
-                  {truncateNodeId(node.node_id)}
-                </text>
-              )}
-            </g>
-          );
-        })}
+              );
+            });
+          })()}
 
+          {/* ── Node dots (including RTT glow ring) ── */}
+          {nodes.map((node) => {
+            const angle = nodeIdToAngle(node.node_id);
+            const x = CX + RING_R * Math.cos(angle);
+            const y = CY + RING_R * Math.sin(angle);
+            const isStale = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
+            const displayStatus = isStale ? 'STALE' : (node.status ?? 'UNKNOWN');
+            const color = node.status === null ? '#ffffff' : STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
+            const isSelected = selectedNodeId === node.node_id;
+            const avg = avgRTT(node.rtt_samples);
+
+            return (
+              <g key={node.node_id}>
+                {/* RTT outer glow ring */}
+                {avg !== null && (
+                  <circle
+                    cx={x} cy={y}
+                    r={DOT_R + 5}
+                    fill="none"
+                    stroke={rttColor(avg)}
+                    strokeWidth={2}
+                    opacity={0.35}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                )}
+                {isSelected && (
+                  <circle
+                    cx={x} cy={y}
+                    r={DOT_R + (avg !== null ? 10 : 5)}
+                    fill="none"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    opacity={0.5}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                )}
+                <circle
+                  cx={x} cy={y}
+                  r={DOT_R}
+                  fill={color}
+                  stroke={isSelected ? '#ffffff' : '#101319'}
+                  strokeWidth={isSelected ? 2.5 : 2}
+                  style={{ cursor: 'pointer' }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onMouseEnter={() => {
+                    setTooltip({ node });
+                    setHoveredNodeId(node.node_id);
+                  }}
+                  onMouseLeave={() => setHoveredNodeId(null)}
+                  onClick={() => { if (!hasDraggedRef.current) onNodeSelect(node.node_id); }}
+                />
+                {nodes.length <= 24 && (
+                  <text
+                    x={x + (x > CX ? DOT_R + 4 : -(DOT_R + 4))}
+                    y={y + 4}
+                    fontSize={9}
+                    fill="#9ca3af"
+                    textAnchor={x > CX ? 'start' : 'end'}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {truncateNodeId(node.node_id)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </g>
       </svg>
 
       {/* Tooltip — corner opposite the hovered node's ring quadrant */}
@@ -348,8 +442,29 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         );
       })()}
 
+      {/* Zoom controls */}
+      <div className="flex items-center gap-1.5 px-2 mt-1 mb-0.5 text-xs text-gray-500">
+        <span>Zoom</span>
+        <button
+          onClick={() => zoomBy(1.25)}
+          className="w-5 h-5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold leading-none flex items-center justify-center"
+        >+</button>
+        <button
+          onClick={() => zoomBy(1 / 1.25)}
+          className="w-5 h-5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold leading-none flex items-center justify-center"
+        >−</button>
+        <span className="w-8 text-center tabular-nums">{zoom !== 1 ? `${zoom.toFixed(1)}×` : '1×'}</span>
+        {zoom !== 1 && (
+          <button
+            onClick={resetViewport}
+            className="px-1.5 h-5 rounded bg-gray-700 hover:bg-gray-600 text-gray-400 leading-none"
+          >reset</button>
+        )}
+        <span className="text-gray-700 ml-1">· scroll to zoom · drag to pan</span>
+      </div>
+
       {/* Legend / layer toggles */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 px-2 text-xs text-gray-500">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 px-2 text-xs text-gray-500">
         {(
           [
             { key: 'primarySuccessor', label: 'Primary successor', icon: <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="rgba(99,102,241,0.7)" strokeWidth="2" /></svg> },
