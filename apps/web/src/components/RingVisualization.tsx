@@ -302,9 +302,15 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
 
       </svg>
 
-      {/* Tooltip — fixed bottom-right of the ring container */}
+      {/* Tooltip — corner opposite the hovered node's ring quadrant */}
       {tooltip && (() => {
         const { node } = tooltip;
+        const angle = nodeIdToAngle(node.node_id);
+        const nodeX = CX + RING_R * Math.cos(angle);
+        const nodeY = CY + RING_R * Math.sin(angle);
+        const posClass = nodeY > CY
+          ? (nodeX > CX ? 'top-2 left-2' : 'top-2 right-2')
+          : (nodeX > CX ? 'bottom-8 left-2' : 'bottom-8 right-2');
         const isStaleTooltip = staleCutoff != null && node.last_seen !== null && new Date(node.last_seen) < staleCutoff;
         const tooltipStatus = isStaleTooltip ? 'STALE' : (node.status ?? 'UNKNOWN');
         const statusColor = node.status === null ? '#ffffff' : STATUS_COLORS[tooltipStatus] ?? STATUS_COLORS['UNKNOWN'];
@@ -313,7 +319,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         const succListCap = node.successor_list_capacity;
         return (
           <div
-            className="absolute bottom-8 right-2 w-52 rounded-md border border-gray-700 bg-gray-800 p-2.5 text-xs font-mono pointer-events-none"
+            className={`absolute ${posClass} w-52 rounded-md border border-gray-700 bg-gray-800 p-2.5 text-xs font-mono pointer-events-none`}
             style={{ lineHeight: '1.6' }}
           >
             <div className="text-gray-100 truncate">{node.node_id.slice(0, 22)}…</div>
