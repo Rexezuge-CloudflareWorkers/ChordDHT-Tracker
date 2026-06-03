@@ -57,7 +57,7 @@ Run `pnpm run typegen` after changing bindings in Wrangler config.
 - `apps/api/src/endpoints/` contains file-routed endpoint classes, one file per HTTP method per route.
 - `apps/api/src/endpoints/IBaseRoute.ts` is the abstract base class all endpoint classes extend.
 - `apps/api/src/auth.ts` — Web Crypto helpers: cert verify, CRL verify, admin token auth, URI normalise + SHA-1 hash.
-- `apps/api/src/db.ts` owns D1 access helpers (config reads, CA key import/cache, tracker_meta management).
+- `apps/api/src/db.ts` owns D1 access helpers (config reads, CA key import/cache, tracker_meta management, and v4.0 vnode helpers: `upsertVNode`, `getVNodesByAnchor`, `checkVNodeIDCollision`, `updateAnchorVnodeCount`, `verifyVNodeProof`, `deriveVNodeID`).
 - `apps/api/src/errors.ts` provides the `errorResponse` helper for structured error responses.
 - `apps/api/src/types.ts` contains domain types (`TrackerNodeRecord`, `PublicTrackerNodeRecord`, `NodeInfo`, `HeartbeatBody`, `Certificate`, `sanitizeNode`).
 - `apps/api/src/generated/spa-shell.ts` — auto-generated SPA shell stub (produced by `postinstall`).
@@ -82,6 +82,7 @@ src/endpoints/tracker/crl/GET.ts                     → GET /tracker/crl
 src/endpoints/tracker/crl/POST.ts                    → POST /tracker/crl
 src/endpoints/tracker/regions/GET.ts                 → GET /tracker/regions
 src/endpoints/tracker/admin/verify/GET.ts            → GET /tracker/admin/verify
+src/endpoints/tracker/policy/GET.ts                  → GET /tracker/policy
 ```
 
 Each endpoint file exports a single class extending `IBaseRoute`. The worker instantiates the class and calls `.handle(c)` as the Hono handler.
@@ -90,7 +91,8 @@ Each endpoint file exports a single class extending `IBaseRoute`. The worker ins
 
 - `GET /tracker/health` — Worker uptime and status
 - `GET /tracker/stats` — Ring-level aggregate statistics
-- `POST /tracker/nodes` — Register a new node
+- `POST /tracker/nodes` — Register a node (anchor or vnode); v4.0: accepts optional `vnodes[]` array in body and `anchor_id`/`vnode_proof` for individual vnode registration; validates VNodeProof signatures
+- `GET /tracker/policy` — Return vnode policy (`max_vnodes_per_anchor`, `min_anchor_ratio`)
 - `GET /tracker/nodes` — List all nodes (paginated, optional status/region filter); full data requires admin token
 - `GET /tracker/nodes/seeds` — Get random seed nodes for bootstrapping
 - `GET /tracker/nodes/:node_id` — Get a specific node record

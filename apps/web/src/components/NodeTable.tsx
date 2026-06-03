@@ -33,11 +33,12 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleC
             <th className="pb-2 pr-4 font-medium">URI</th>
             <th className="pb-2 pr-4 font-medium">Status</th>
             {isAdmin && <th className="pb-2 pr-4 font-medium">Region</th>}
+            {isAdmin && <th className="pb-2 pr-4 font-medium">VNodes</th>}
             <th className="pb-2 pr-4 font-medium">Last Seen</th>
             <th className="pb-2 font-medium">Reports</th>
           </tr>
           <tr>
-            <td colSpan={isAdmin ? 6 : 5} className="pb-2">
+            <td colSpan={isAdmin ? 7 : 5} className="pb-2">
               <div className="border-b border-gray-800" />
             </td>
           </tr>
@@ -77,6 +78,13 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleC
                 {isAdmin && (
                   <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">
                     {node.region ?? '—'}
+                  </td>
+                )}
+                {isAdmin && (
+                  <td className="py-2 pr-4 text-xs text-gray-500 tabular-nums">
+                    {(node.vnode_count ?? 0) > 0
+                      ? <span className="px-1.5 py-0.5 rounded bg-indigo-900/30 text-indigo-300 text-xs">{node.vnode_count}</span>
+                      : '—'}
                   </td>
                 )}
                 <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">

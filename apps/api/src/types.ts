@@ -10,6 +10,7 @@ export interface Certificate {
 
 export interface TrackerNodeRecord {
   node_id: string;
+  vnode_count: number | null;
   uri: string;
   status: string;
   joined_at: string;
@@ -62,6 +63,7 @@ export type PublicTrackerNodeRecord = Omit<
   | 'predecessor_list'
   | 'rtt_samples'
   | 'finger_nodes'
+  | 'vnode_count'
 > & {
   status: null;
   uri: null;
@@ -87,6 +89,7 @@ export type PublicTrackerNodeRecord = Omit<
   predecessor_list: null;
   rtt_samples: null;
   finger_nodes: null;
+  vnode_count: null;
 };
 
 export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNodeRecord | PublicTrackerNodeRecord {
@@ -117,6 +120,7 @@ export function sanitizeNode(node: TrackerNodeRecord, admin: boolean): TrackerNo
     predecessor_list: null,
     rtt_samples: null,
     finger_nodes: null,
+    vnode_count: null,
   };
 }
 
@@ -124,6 +128,27 @@ export interface NodeInfo {
   node_id: string;
   uri: string;
   certificate?: Certificate;
+  // v4.0 vnode fields
+  anchor_id?: string;
+  vnode_proof?: VNodeProof;
+}
+
+// VNodeProof is a signed credential proving a vnode belongs to an anchor.
+export interface VNodeProof {
+  vnode_id: string;
+  anchor_id: string;
+  index: number;
+  issued_at: number;
+  expires_at: number;
+  anchor_pub: string; // base64 std Ed25519 public key (32 bytes)
+  signature: string;  // base64 std Ed25519 signature (64 bytes)
+}
+
+// VNodeEntry is a lightweight vnode descriptor in an anchor's NodeInfo.
+export interface VNodeEntry {
+  vnode_id: string;
+  index: number;
+  proof?: VNodeProof;
 }
 
 export interface HeartbeatBody {

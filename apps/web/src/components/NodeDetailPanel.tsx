@@ -122,6 +122,18 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                   ? <span className="text-xs text-gray-300">{node.region}</span>
                   : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
+              {isAdmin && (node.vnode_count ?? 0) > 0 && (
+                <Row label="VNodes">
+                  <span className="px-1.5 py-0.5 rounded bg-indigo-900/30 text-indigo-300 text-xs font-mono">
+                    {node.vnode_count}
+                  </span>
+                  {node.vnodes && node.vnodes.length > 0 && (
+                    <span className="ml-2 text-xs text-gray-500">
+                      {node.vnodes.map(v => v.vnode_id.slice(0, 8)).join(', ')}
+                    </span>
+                  )}
+                </Row>
+              )}
               <Row label="Successor List">
                 {node.successor_list_size != null ? (
                   node.successor_list_capacity != null ? (

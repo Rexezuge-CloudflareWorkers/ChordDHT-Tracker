@@ -3,7 +3,7 @@ import type { RouteContext } from '@/endpoints/IBaseRoute';
 import type { TrackerNodeRecord } from '@/types';
 import { sanitizeNode } from '@/types';
 import { isAdmin } from '@/auth';
-import { parseNodeJsonColumns } from '@/db';
+import { parseNodeJsonColumns, getVNodesByAnchor } from '@/db';
 
 class NodesGetRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
@@ -51,7 +51,21 @@ class NodesGetRoute extends IBaseRoute {
     }
 
     const admin = await isAdmin(c.req.raw, c.env);
-    return c.json({ nodes: nodes.map(n => sanitizeNode(parseNodeJsonColumns(n), admin)), total, limit, offset });
+    const sanitized = nodes.map(n => sanitizeNode(parseNodeJsonColumns(n), admin));
+
+    // v4.0: attach vnodes for admin view.
+    if (admin && sanitized.length > 0) {
+      const withVnodes = await Promise.all(
+        sanitized.map(async (n) => {
+          const vnodeCount = (n as TrackerNodeRecord).vnode_count ?? 0;
+          if (vnodeCount === 0) return n;
+          const vnodes = await getVNodesByAnchor(c.env.DB, n.node_id);
+          return { ...n, vnodes };
+        }),
+      );
+      return c.json({ nodes: withVnodes, total, limit, offset });
+    }
+    return c.json({ nodes: sanitized, total, limit, offset });
   }
 }
 

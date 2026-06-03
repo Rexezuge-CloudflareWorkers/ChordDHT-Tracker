@@ -24,6 +24,9 @@ export interface TrackerNodeRecord {
   predecessor_list: string[] | null;
   rtt_samples: Record<string, number> | null;
   finger_nodes: string[] | null;
+  // v4.0
+  vnode_count: number | null;
+  vnodes?: { vnode_id: string; index: number }[];
 }
 
 export interface RegionsResponse {
