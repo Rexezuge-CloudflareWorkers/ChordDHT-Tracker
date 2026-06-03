@@ -3,7 +3,7 @@ import type { RouteContext } from '@/endpoints/IBaseRoute';
 import { errorResponse } from '@/errors';
 import { getMaxNodes, evictOverLimit, getCAPublicKey, upsertVNode, checkVNodeIDCollision, updateAnchorVnodeCount, verifyVNodeProof } from '@/db';
 import { verifyCertificate } from '@/auth';
-import type { Certificate, VNodeEntry, VNodeProof } from '@/types';
+import type { Certificate, VNodeProof } from '@/types';
 
 const NODE_ID_REGEX = /^[0-9a-f]{40}$/;
 const MAX_VNODES_PER_ANCHOR = 8;
