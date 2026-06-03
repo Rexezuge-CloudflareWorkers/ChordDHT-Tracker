@@ -15,18 +15,25 @@ interface TooltipState {
   node: TrackerNodeRecord;
 }
 
+interface VNodeTooltipState {
+  vnodeId: string;
+  vnodeIndex: number;
+  anchor: TrackerNodeRecord;
+}
+
 interface Viewport {
   zoom: number;
   panX: number;
   panY: number;
 }
 
-type LayerKey = 'primarySuccessor' | 'backupSuccessors' | 'predecessors' | 'fingerTable';
+type LayerKey = 'primarySuccessor' | 'backupSuccessors' | 'predecessors' | 'fingerTable' | 'vnodes';
 
 const CX = 300;
 const CY = 300;
 const RING_R = 220;
 const DOT_R = 8;
+const VNODE_DOT_R = 5;
 const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 12;
 
@@ -65,11 +72,14 @@ function lineVis(hoveredId: string | null, sourceId: string, targetId: string, b
 export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleCutoff }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [vnodeTooltip, setVnodeTooltip] = useState<VNodeTooltipState | null>(null);
+  const [hoveredVnodeId, setHoveredVnodeId] = useState<string | null>(null);
   const [visibleLayers, setVisibleLayers] = useState<Record<LayerKey, boolean>>({
     primarySuccessor: true,
     backupSuccessors: true,
     predecessors: true,
     fingerTable: true,
+    vnodes: true,
   });
   const [viewport, setViewport] = useState<Viewport>({ zoom: 1, panX: 0, panY: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -167,6 +177,20 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
     return { x: CX + RING_R * Math.cos(a), y: CY + RING_R * Math.sin(a) };
   }
 
+  function vnodePos(vnodeId: string): { x: number; y: number } {
+    const a = nodeIdToAngle(vnodeId);
+    return { x: CX + RING_R * Math.cos(a), y: CY + RING_R * Math.sin(a) };
+  }
+
+  const vnodeEntries: { vnodeId: string; index: number; anchor: TrackerNodeRecord }[] = [];
+  if (isAdmin) {
+    for (const node of nodes) {
+      for (const v of node.vnodes ?? []) {
+        vnodeEntries.push({ vnodeId: v.vnode_id, index: v.index, anchor: node });
+      }
+    }
+  }
+
   const { zoom, panX, panY } = viewport;
 
   return (
@@ -182,6 +206,8 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         onMouseLeave={() => {
           setTooltip(null);
           setHoveredNodeId(null);
+          setVnodeTooltip(null);
+          setHoveredVnodeId(null);
           dragRef.current = null;
           hasDraggedRef.current = false;
           setIsDragging(false);
@@ -327,6 +353,70 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             });
           })()}
 
+          {/* ── Layer 5: VNode spoke lines ── */}
+          {isAdmin && visibleLayers.vnodes && vnodeEntries.map(({ vnodeId, index: _idx, anchor }) => {
+            const from = nodePos(anchor.node_id);
+            const to = vnodePos(vnodeId);
+            if (!from) return null;
+            const isVnodeHovered = hoveredVnodeId === vnodeId;
+            const isAnchorHovered = hoveredNodeId === anchor.node_id;
+            const isStaleSpoke = staleCutoff != null && anchor.last_seen !== null && new Date(anchor.last_seen) < staleCutoff;
+            const spokeStatus = isStaleSpoke ? 'STALE' : (anchor.status ?? 'UNKNOWN');
+            const color = STATUS_COLORS[spokeStatus] ?? STATUS_COLORS['UNKNOWN'];
+            const opacity = (hoveredNodeId || hoveredVnodeId)
+              ? (isAnchorHovered || isVnodeHovered ? 0.6 : 0.06)
+              : 0.3;
+            return (
+              <line
+                key={`vnode-spoke-${vnodeId}`}
+                x1={from.x} y1={from.y}
+                x2={to.x} y2={to.y}
+                stroke={color}
+                strokeWidth={0.7}
+                strokeDasharray="3 3"
+                opacity={opacity}
+                style={{ pointerEvents: 'none' }}
+              />
+            );
+          })}
+
+          {/* ── Layer 6: VNode dots ── */}
+          {isAdmin && visibleLayers.vnodes && vnodeEntries.map(({ vnodeId, index, anchor }) => {
+            const { x, y } = vnodePos(vnodeId);
+            const isStale = staleCutoff != null && anchor.last_seen !== null && new Date(anchor.last_seen) < staleCutoff;
+            const displayStatus = isStale ? 'STALE' : (anchor.status ?? 'UNKNOWN');
+            const color = STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
+            const isHovered = hoveredVnodeId === vnodeId;
+            const isAnchorHovered = hoveredNodeId === anchor.node_id;
+            const fillOpacity = (hoveredNodeId || hoveredVnodeId)
+              ? (isHovered || isAnchorHovered ? 1 : 0.2)
+              : 0.55;
+            return (
+              <g key={`vnode-dot-${vnodeId}`}>
+                <circle
+                  cx={x} cy={y}
+                  r={VNODE_DOT_R}
+                  fill={color}
+                  fillOpacity={fillOpacity}
+                  stroke={isHovered ? '#ffffff' : '#101319'}
+                  strokeWidth={isHovered ? 1.5 : 1}
+                  strokeOpacity={fillOpacity}
+                  style={{ cursor: 'pointer' }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onMouseEnter={() => {
+                    setVnodeTooltip({ vnodeId, vnodeIndex: index, anchor });
+                    setHoveredVnodeId(vnodeId);
+                  }}
+                  onMouseLeave={() => {
+                    setVnodeTooltip(null);
+                    setHoveredVnodeId(null);
+                  }}
+                  onClick={() => { if (!hasDraggedRef.current) onNodeSelect(anchor.node_id); }}
+                />
+              </g>
+            );
+          })}
+
           {/* ── Node dots (including RTT glow ring) ── */}
           {nodes.map((node) => {
             const angle = nodeIdToAngle(node.node_id);
@@ -442,6 +532,28 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         );
       })()}
 
+      {/* VNode tooltip */}
+      {vnodeTooltip && (() => {
+        const { vnodeId, vnodeIndex, anchor } = vnodeTooltip;
+        const a = nodeIdToAngle(vnodeId);
+        const vx = CX + RING_R * Math.cos(a);
+        const vy = CY + RING_R * Math.sin(a);
+        const posClass = vy > CY
+          ? (vx > CX ? 'top-2 left-2' : 'top-2 right-2')
+          : (vx > CX ? 'bottom-8 left-2' : 'bottom-8 right-2');
+        return (
+          <div
+            className={`absolute ${posClass} w-52 rounded-md border border-gray-700 bg-gray-800 p-2.5 text-xs font-mono pointer-events-none`}
+            style={{ lineHeight: '1.6' }}
+          >
+            <div className="text-indigo-300 text-xs font-sans mb-1">VNode #{vnodeIndex}</div>
+            <div className="text-gray-100 truncate">{vnodeId.slice(0, 22)}…</div>
+            <div className="text-gray-500 mt-1">Anchor:</div>
+            <div className="text-gray-300 truncate">{anchor.node_id.slice(0, 22)}…</div>
+          </div>
+        );
+      })()}
+
       {/* Zoom controls */}
       <div className="flex items-center gap-1.5 px-2 mt-1 mb-0.5 text-xs text-gray-500">
         <span>Zoom</span>
@@ -471,8 +583,9 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             { key: 'backupSuccessors', label: 'Backup successors', icon: <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="rgba(99,102,241,0.5)" strokeWidth="0.8" /></svg> },
             { key: 'predecessors',     label: 'Predecessors',      icon: <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="#a78bfa" strokeWidth="0.8" strokeDasharray="4 3" /></svg> },
             { key: 'fingerTable',      label: 'Finger table (hover)', icon: <svg width="24" height="8"><path d="M2,6 Q12,1 22,4" fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="1" /></svg> },
+            { key: 'vnodes',           label: 'Virtual nodes',    icon: <svg width="30" height="8"><circle cx="4" cy="4" r="3" fill="#6366f1" fillOpacity="0.55" stroke="#101319" strokeWidth="1" /><line x1="4" y1="4" x2="26" y2="4" stroke="#6366f1" strokeWidth="0.7" strokeDasharray="3 3" strokeOpacity="0.5" /><circle cx="26" cy="4" r="5" fill="#22c55e" stroke="#101319" strokeWidth="1.5" /></svg> },
           ] as { key: LayerKey; label: string; icon: React.ReactNode }[]
-        ).map(({ key, label, icon }) => (
+        ).filter(({ key }) => key !== 'vnodes' || isAdmin).map(({ key, label, icon }) => (
           <label
             key={key}
             className={`flex items-center gap-1 cursor-pointer transition-opacity ${visibleLayers[key] ? '' : 'opacity-35'}`}
