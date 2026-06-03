@@ -2,6 +2,8 @@
 
 A Cloudflare Worker that acts as the centralized bootstrap and health-monitoring component for a [Chord DHT](https://pdos.csail.mit.edu/papers/ton:chord/paper-ton.pdf) learning system. Chord nodes are fully peer-to-peer and do not depend on this Tracker for routing — the Tracker only provides seed discovery, global statistics, and optional certificate-based identity verification.
 
+Now at **v4.0** with virtual node (VNode) support: the tracker stores vnode records, validates VNodeProof signatures, and exposes a `GET /tracker/policy` endpoint. The SPA dashboard shows per-anchor vnode counts.
+
 > **Learning system** — designed for studying the Chord protocol. Not intended for production use.
 
 ## Sister Project
@@ -24,6 +26,7 @@ A Cloudflare Worker that acts as the centralized bootstrap and health-monitoring
           │  GET  /tracker/stats      dashboard  │
           │  GET  /tracker/health     liveness   │
           │  GET  /tracker/admin/verify  admin   │
+          │  GET  /tracker/policy    vnode policy│
           └──────────────────────────────────────┘
                     ▲ optional bootstrap only
         ┌───────────┼───────────────────────────┐
