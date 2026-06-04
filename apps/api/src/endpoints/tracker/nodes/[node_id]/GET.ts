@@ -15,7 +15,8 @@ class NodeGetRoute extends IBaseRoute {
       return errorResponse('INVALID_REQUEST', 'node_id must be a 40-character lowercase hex string', 400);
     }
 
-    const node = await c.env.DB.prepare('SELECT * FROM nodes WHERE node_id = ?')
+    const db = c.env.DB.withSession('first-unconstrained');
+    const node = await db.prepare('SELECT * FROM nodes WHERE node_id = ?')
       .bind(node_id)
       .first<TrackerNodeRecord>();
 

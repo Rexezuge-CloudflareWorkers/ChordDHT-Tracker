@@ -14,39 +14,40 @@ class NodesGetRoute extends IBaseRoute {
     const limit = isNaN(limitParam) ? 50 : Math.max(1, Math.min(200, limitParam));
     const offset = isNaN(offsetParam) ? 0 : Math.max(0, offsetParam);
 
+    const db = c.env.DB.withSession('first-unconstrained');
     let nodes: TrackerNodeRecord[];
     let total: number;
 
     if (statusFilter && regionFilter) {
-      const { results } = await c.env.DB.prepare(
+      const { results } = await db.prepare(
         'SELECT * FROM nodes WHERE status = ? AND region = ? ORDER BY last_seen DESC LIMIT ? OFFSET ?',
       ).bind(statusFilter, regionFilter, limit, offset).all<TrackerNodeRecord>();
       nodes = results;
-      const countResult = await c.env.DB.prepare(
+      const countResult = await db.prepare(
         'SELECT COUNT(*) as count FROM nodes WHERE status = ? AND region = ?',
       ).bind(statusFilter, regionFilter).first<{ count: number }>();
       total = countResult?.count ?? 0;
     } else if (statusFilter) {
-      const { results } = await c.env.DB.prepare(
+      const { results } = await db.prepare(
         'SELECT * FROM nodes WHERE status = ? ORDER BY last_seen DESC LIMIT ? OFFSET ?',
       ).bind(statusFilter, limit, offset).all<TrackerNodeRecord>();
       nodes = results;
-      const countResult = await c.env.DB.prepare('SELECT COUNT(*) as count FROM nodes WHERE status = ?')
+      const countResult = await db.prepare('SELECT COUNT(*) as count FROM nodes WHERE status = ?')
         .bind(statusFilter).first<{ count: number }>();
       total = countResult?.count ?? 0;
     } else if (regionFilter) {
-      const { results } = await c.env.DB.prepare(
+      const { results } = await db.prepare(
         'SELECT * FROM nodes WHERE region = ? ORDER BY last_seen DESC LIMIT ? OFFSET ?',
       ).bind(regionFilter, limit, offset).all<TrackerNodeRecord>();
       nodes = results;
-      const countResult = await c.env.DB.prepare('SELECT COUNT(*) as count FROM nodes WHERE region = ?')
+      const countResult = await db.prepare('SELECT COUNT(*) as count FROM nodes WHERE region = ?')
         .bind(regionFilter).first<{ count: number }>();
       total = countResult?.count ?? 0;
     } else {
-      const { results } = await c.env.DB.prepare('SELECT * FROM nodes ORDER BY last_seen DESC LIMIT ? OFFSET ?')
+      const { results } = await db.prepare('SELECT * FROM nodes ORDER BY last_seen DESC LIMIT ? OFFSET ?')
         .bind(limit, offset).all<TrackerNodeRecord>();
       nodes = results;
-      const countResult = await c.env.DB.prepare('SELECT COUNT(*) as count FROM nodes').first<{ count: number }>();
+      const countResult = await db.prepare('SELECT COUNT(*) as count FROM nodes').first<{ count: number }>();
       total = countResult?.count ?? 0;
     }
 
@@ -59,7 +60,7 @@ class NodesGetRoute extends IBaseRoute {
         sanitized.map(async (n) => {
           const vnodeCount = (n as TrackerNodeRecord).vnode_count ?? 0;
           if (vnodeCount === 0) return n;
-          const vnodes = await getVNodesByAnchor(c.env.DB, n.node_id);
+          const vnodes = await getVNodesByAnchor(db, n.node_id);
           return { ...n, vnodes };
         }),
       );

@@ -30,5 +30,6 @@ export function createD1(...stmts: ReturnType<typeof createStmt>[]): D1Database 
     mockPrepare.mockReturnValueOnce(stmt);
   }
   mockPrepare.mockReturnValue(createStmt());
-  return { prepare: mockPrepare } as unknown as D1Database;
+  const db = { prepare: mockPrepare, withSession: vi.fn().mockReturnThis() } as unknown as D1Database;
+  return db;
 }

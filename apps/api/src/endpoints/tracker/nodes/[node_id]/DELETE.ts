@@ -11,7 +11,8 @@ class NodeDeleteRoute extends IBaseRoute {
       return errorResponse('INVALID_REQUEST', 'node_id must be a 40-character lowercase hex string', 400);
     }
 
-    const result = await c.env.DB.prepare('DELETE FROM nodes WHERE node_id = ?').bind(node_id).run();
+    const db = c.env.DB.withSession('first-primary');
+    const result = await db.prepare('DELETE FROM nodes WHERE node_id = ?').bind(node_id).run();
 
     if (result.meta.changes === 0) {
       return errorResponse('NODE_NOT_FOUND', `Node ${node_id} not found`, 404);

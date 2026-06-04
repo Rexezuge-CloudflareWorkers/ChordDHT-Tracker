@@ -50,10 +50,11 @@ class NodesPostRoute extends IBaseRoute {
 
     // v4.0: if this is a vnode registration (anchor_id + vnode_proof present), verify the proof.
     const isVNode = typeof anchor_id === 'string' && NODE_ID_REGEX.test(anchor_id) && vnode_proof !== null && typeof vnode_proof === 'object';
+    const db = c.env.DB.withSession('first-primary');
     if (isVNode) {
       const proof = vnode_proof as VNodeProof;
       // Find anchor's public key from its registered certificate.
-      const anchorCertRow = await c.env.DB.prepare('SELECT cert_json FROM nodes WHERE node_id = ?')
+      const anchorCertRow = await db.prepare('SELECT cert_json FROM nodes WHERE node_id = ?')
         .bind(anchor_id).first<{ cert_json: string | null }>();
       const anchorCert = anchorCertRow?.cert_json ? JSON.parse(anchorCertRow.cert_json) as Certificate : null;
       if (!anchorCert) {
@@ -75,7 +76,7 @@ class NodesPostRoute extends IBaseRoute {
 
     const now = new Date().toISOString();
     const nowUnix = Math.floor(Date.now() / 1000);
-    await c.env.DB.prepare(
+    await db.prepare(
       `INSERT INTO nodes (node_id, uri, joined_at, last_seen, cert_json, cert_expires_at, region)
        VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(node_id) DO UPDATE SET
@@ -91,11 +92,11 @@ class NodesPostRoute extends IBaseRoute {
     // v4.0: store vnode record if this is a vnode registration.
     if (isVNode) {
       const proof = vnode_proof as VNodeProof;
-      const collision = await checkVNodeIDCollision(c.env.DB, node_id, anchor_id as string);
+      const collision = await checkVNodeIDCollision(db, node_id, anchor_id as string);
       if (collision) {
         return errorResponse('ID_COLLISION', 'vnode_id collides with an existing node or vnode', 409);
       }
-      await upsertVNode(c.env.DB, {
+      await upsertVNode(db, {
         vnode_id: node_id,
         anchor_id: anchor_id as string,
         vnode_index: proof.index,
@@ -119,9 +120,9 @@ class NodesPostRoute extends IBaseRoute {
           if (!proof) continue;
           const proofOk = await verifyVNodeProof(proof, anchorCertPubKey);
           if (!proofOk) continue;
-          const collision = await checkVNodeIDCollision(c.env.DB, ve.vnode_id, anchorNode);
+          const collision = await checkVNodeIDCollision(db, ve.vnode_id, anchorNode);
           if (collision) continue;
-          await upsertVNode(c.env.DB, {
+          await upsertVNode(db, {
             vnode_id: ve.vnode_id,
             anchor_id: anchorNode,
             vnode_index: proof.index,
@@ -131,14 +132,14 @@ class NodesPostRoute extends IBaseRoute {
           validCount++;
         }
         if (validCount > 0) {
-          await updateAnchorVnodeCount(c.env.DB, anchorNode, validCount);
+          await updateAnchorVnodeCount(db, anchorNode, validCount);
         }
       }
     }
 
-    await evictOverLimit(c.env.DB, getMaxNodes(c.env));
+    await evictOverLimit(db, getMaxNodes(c.env));
 
-    const countResult = await c.env.DB.prepare('SELECT COUNT(*) as count FROM nodes').first<{ count: number }>();
+    const countResult = await db.prepare('SELECT COUNT(*) as count FROM nodes').first<{ count: number }>();
 
     return c.json({
       registered: true,
