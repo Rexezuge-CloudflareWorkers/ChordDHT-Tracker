@@ -136,14 +136,23 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
               )}
               {isAdmin && !node.is_vnode && (node.vnode_count ?? 0) > 0 && (
                 <Row label="VNodes">
-                  <span className="px-1.5 py-0.5 rounded bg-indigo-900/30 text-indigo-300 text-xs font-mono">
-                    {node.vnode_count}
-                  </span>
-                  {node.vnodes && node.vnodes.length > 0 && (
-                    <span className="ml-2 text-xs text-gray-500">
-                      {node.vnodes.map(v => v.vnode_id.slice(0, 8)).join(', ')}
-                    </span>
-                  )}
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    {node.vnodes && node.vnodes.length > 0 ? (
+                      node.vnodes.map(v => (
+                        <span
+                          key={v.vnode_id}
+                          className="inline-flex items-center gap-1 rounded bg-indigo-900/30 px-1.5 py-0.5"
+                        >
+                          <span className="text-[10px] text-indigo-300">#{v.index}</span>
+                          <NodeIdChip id={v.vnode_id} knownNodeIds={knownNodeIds} onNavigate={onNavigate} />
+                        </span>
+                      ))
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-900/30 text-indigo-300 text-xs font-mono">
+                        {node.vnode_count}
+                      </span>
+                    )}
+                  </div>
                 </Row>
               )}
               <Row label="Successor List">
