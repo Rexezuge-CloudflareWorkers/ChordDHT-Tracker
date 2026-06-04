@@ -37,3 +37,10 @@ select {
   background: #3c4656;
   border-radius: 4px;
 }
+
+@media (min-width: 1280px) {
+  .node-list-panel {
+    height: var(--ring-card-height, 60vh);
+    max-height: var(--ring-card-height, 60vh);
+  }
+}

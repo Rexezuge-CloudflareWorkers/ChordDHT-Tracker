@@ -24,10 +24,33 @@ export default function SpaApp() {
   const [regionFilter, setRegionFilter] = useState<string>('');
   const [nodeTypeFilter, setNodeTypeFilter] = useState<NodeTypeFilter>('all');
   const [availableRegions, setAvailableRegions] = useState<Record<string, number>>({});
+  const [ringCardHeight, setRingCardHeight] = useState<number | null>(null);
   const adminTokenRef = useRef(adminToken);
   const regionFilterRef = useRef(regionFilter);
+  const ringCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => { regionFilterRef.current = regionFilter; }, [regionFilter]);
+
+  useEffect(() => {
+    const ringCard = ringCardRef.current;
+    if (!ringCard) return;
+
+    const updateRingCardHeight = () => {
+      const nextHeight = Math.ceil(ringCard.getBoundingClientRect().height);
+      setRingCardHeight(currentHeight => currentHeight === nextHeight ? currentHeight : nextHeight);
+    };
+
+    updateRingCardHeight();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateRingCardHeight);
+      return () => window.removeEventListener('resize', updateRingCardHeight);
+    }
+
+    const observer = new ResizeObserver(updateRingCardHeight);
+    observer.observe(ringCard);
+
+    return () => observer.disconnect();
+  }, []);
 
   const isAdmin = adminToken !== null;
   const visibleNodes = useMemo(() => {
@@ -103,6 +126,10 @@ export default function SpaApp() {
     void refresh();
   };
 
+  const nodePanelStyle = ringCardHeight === null
+    ? undefined
+    : ({ '--ring-card-height': `${ringCardHeight}px` } as React.CSSProperties);
+
   return (
     <div className="min-h-screen" style={{ background: '#101319' }}>
       <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
@@ -162,7 +189,7 @@ export default function SpaApp() {
         <StatsPanel stats={stats} />
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+          <div ref={ringCardRef} className="bg-gray-900 border border-gray-800 rounded-lg p-4 self-start w-full">
             <h2 className="text-sm font-medium text-gray-400 mb-4">Ring Topology</h2>
             <RingVisualization
               nodes={accessibleNodes}
@@ -172,7 +199,10 @@ export default function SpaApp() {
               staleCutoff={staleCutoff}
             />
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col">
+          <div
+            className="node-list-panel bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col overflow-hidden min-h-0"
+            style={nodePanelStyle}
+          >
             <div className="flex flex-wrap items-center justify-between mb-2 shrink-0 gap-2">
               <h2 className="text-sm font-medium text-gray-400">
                 Nodes{' '}
