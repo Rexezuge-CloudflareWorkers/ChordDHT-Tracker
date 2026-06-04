@@ -33,7 +33,7 @@ export function NodeTable({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto overscroll-contain min-h-0 max-h-[60vh]">
+    <div className="flex-1 overflow-y-auto overscroll-contain min-h-0 max-h-[60vh] xl:max-h-none">
       <table className="w-full text-sm border-collapse">
         <thead className="sticky top-0 bg-gray-900">
           <tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
