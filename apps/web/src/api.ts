@@ -7,6 +7,7 @@ function authHeaders(token?: string): HeadersInit {
 export async function fetchNodes(limit = 200, token?: string, region?: string): Promise<NodesResponse> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (region) params.set('region', region);
+  if (token) params.set('include_vnodes', 'true');
   const res = await fetch(`/tracker/nodes?${params}`, { headers: authHeaders(token) });
   if (!res.ok) throw new Error(`Failed to fetch nodes: ${res.status}`);
   return res.json() as Promise<NodesResponse>;

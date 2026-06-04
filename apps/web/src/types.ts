@@ -1,5 +1,8 @@
 export interface TrackerNodeRecord {
   node_id: string;
+  is_vnode?: boolean;
+  anchor_id?: string | null;
+  vnode_index?: number | null;
   uri: string | null;
   status: string | null;
   joined_at: string | null;
@@ -26,7 +29,7 @@ export interface TrackerNodeRecord {
   finger_nodes: string[] | null;
   // v4.0
   vnode_count: number | null;
-  vnodes?: { vnode_id: string; index: number }[];
+  vnodes?: { vnode_id: string; index: number; status?: string }[];
 }
 
 export interface RegionsResponse {

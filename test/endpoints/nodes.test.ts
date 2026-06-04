@@ -169,6 +169,30 @@ describe('DELETE /tracker/nodes/:node_id', () => {
     expect(body.error.code).toBe('NODE_NOT_FOUND');
   });
 
+  it('deregisters an existing vnode', async () => {
+    const db = createD1(
+      createStmt({ changes: 0 }),
+      createStmt({ firstResult: { anchor_id: VALID_NODE_ID } }),
+      createStmt({ changes: 1 }),
+      createStmt({ firstResult: { count: 0 } }),
+      createStmt({ changes: 1 }),
+    );
+    const vnodeID = 'b'.repeat(40);
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(`http://localhost/tracker/nodes/${vnodeID}`, { method: 'DELETE' }),
+      createEnv(db),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { deregistered: boolean; node_id: string };
+    expect(body.deregistered).toBe(true);
+    expect(body.node_id).toBe(vnodeID);
+    const calls = (db.prepare as ReturnType<typeof vi.fn>).mock.calls as string[][];
+    expect(calls[2][0]).toContain('DELETE FROM vnodes');
+  });
+
   it('returns 400 for an invalid node_id in the path', async () => {
     const db = createD1();
     const worker = new ChordDHTTrackerWorker();
@@ -270,6 +294,70 @@ describe('GET /tracker/nodes', () => {
     // Verify the status filter was passed to D1
     const calls = (db.prepare as ReturnType<typeof vi.fn>).mock.calls as string[][];
     expect(calls[0][0]).toContain('WHERE status = ?');
+  });
+
+  it('expands logical vnode records for authenticated topology views', async () => {
+    const anchor = {
+      ...node,
+      vnode_count: 1,
+      region: 'iad',
+      successor_list: null,
+      predecessor_list: null,
+      rtt_samples: null,
+      finger_nodes: null,
+    };
+    const vnodeID = 'b'.repeat(40);
+    const logicalVNode = {
+      vnode_id: vnodeID,
+      anchor_id: VALID_NODE_ID,
+      vnode_index: 1,
+      status: 'ACTIVE',
+      last_seen: 1780000000,
+      joined_at: 1780000000,
+      report_count: 3,
+      successor_id: 'c'.repeat(40),
+      predecessor_id: VALID_NODE_ID,
+      successor_list_size: 2,
+      successor_list_capacity: 5,
+      finger_table_coverage: 0.5,
+      uptime_seconds: 120,
+      maintenance_cycles: 4,
+      maintenance_mode: 'ACTIVE_MAINTENANCE',
+      cache_hits: 1,
+      cache_misses: 2,
+      cache_size: 3,
+      predecessor_list_size: 1,
+      successor_list: JSON.stringify(['c'.repeat(40), VALID_NODE_ID]),
+      predecessor_list: JSON.stringify([VALID_NODE_ID]),
+      rtt_samples: JSON.stringify({ [VALID_NODE_ID]: 10 }),
+      finger_nodes: JSON.stringify(['c'.repeat(40)]),
+      anchor_uri: VALID_URI,
+      anchor_joined_at: node.joined_at,
+      anchor_last_seen: node.last_seen,
+      anchor_region: 'iad',
+    };
+    const db = createD1(
+      createStmt({ allResults: [anchor] }),
+      createStmt({ firstResult: { count: 1 } }),
+      createStmt({ allResults: [{ vnode_id: vnodeID, vnode_index: 1, status: 'ACTIVE' }] }),
+      createStmt({ allResults: [logicalVNode] }),
+    );
+
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request('http://localhost/tracker/nodes?include_vnodes=true', {
+        headers: { Authorization: 'Bearer test-secret' },
+      }),
+      createEnv(db, true, 'test-secret'),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { nodes: Array<{ node_id: string; is_vnode?: boolean; successor_list?: string[] }> };
+    expect(body.nodes).toHaveLength(2);
+    expect(body.nodes[1].node_id).toBe(vnodeID);
+    expect(body.nodes[1].is_vnode).toBe(true);
+    expect(body.nodes[1].successor_list).toEqual(['c'.repeat(40), VALID_NODE_ID]);
   });
 });
 

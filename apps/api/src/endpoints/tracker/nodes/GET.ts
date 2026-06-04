@@ -3,12 +3,13 @@ import type { RouteContext } from '@/endpoints/IBaseRoute';
 import type { TrackerNodeRecord } from '@/types';
 import { sanitizeNode } from '@/types';
 import { isAdmin } from '@/auth';
-import { parseNodeJsonColumns, getVNodesByAnchor } from '@/db';
+import { parseNodeJsonColumns, getVNodesByAnchor, getLogicalVNodesByAnchors } from '@/db';
 
 class NodesGetRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
     const statusFilter = c.req.query('status');
     const regionFilter = c.req.query('region');
+    const includeVnodes = c.req.query('include_vnodes') === 'true';
     const limitParam = parseInt(c.req.query('limit') ?? '50', 10);
     const offsetParam = parseInt(c.req.query('offset') ?? '0', 10);
     const limit = isNaN(limitParam) ? 50 : Math.max(1, Math.min(200, limitParam));
@@ -52,10 +53,12 @@ class NodesGetRoute extends IBaseRoute {
     }
 
     const admin = await isAdmin(c.req.raw, c.env);
-    const sanitized = nodes.map(n => sanitizeNode(parseNodeJsonColumns(n), admin));
+    const parsedNodes = nodes.map(n => parseNodeJsonColumns({ ...n, is_vnode: false }));
+    const sanitized = parsedNodes.map(n => sanitizeNode(n, admin));
 
     // v4.0: attach vnodes for admin view.
     if (admin && sanitized.length > 0) {
+      const anchorIDs = parsedNodes.map(n => n.node_id);
       const withVnodes = await Promise.all(
         sanitized.map(async (n) => {
           const vnodeCount = (n as TrackerNodeRecord).vnode_count ?? 0;
@@ -64,6 +67,10 @@ class NodesGetRoute extends IBaseRoute {
           return { ...n, vnodes };
         }),
       );
+      if (includeVnodes) {
+        const logicalVnodes = await getLogicalVNodesByAnchors(db, anchorIDs);
+        return c.json({ nodes: [...withVnodes, ...logicalVnodes], total, limit, offset });
+      }
       return c.json({ nodes: withVnodes, total, limit, offset });
     }
     return c.json({ nodes: sanitized, total, limit, offset });

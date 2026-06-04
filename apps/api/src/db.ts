@@ -10,11 +10,22 @@ const encoder = new TextEncoder();
 export function parseNodeJsonColumns(node: TrackerNodeRecord): TrackerNodeRecord {
   return {
     ...node,
-    successor_list: node.successor_list ? JSON.parse(node.successor_list as string) : null,
-    predecessor_list: node.predecessor_list ? JSON.parse(node.predecessor_list as string) : null,
-    rtt_samples: node.rtt_samples ? JSON.parse(node.rtt_samples as string) : null,
-    finger_nodes: node.finger_nodes ? JSON.parse(node.finger_nodes as string) : null,
+    successor_list: parseJSONColumn(node.successor_list),
+    predecessor_list: parseJSONColumn(node.predecessor_list),
+    rtt_samples: parseJSONColumn(node.rtt_samples),
+    finger_nodes: parseJSONColumn(node.finger_nodes),
   };
+}
+
+function parseJSONColumn<T>(value: string | T | null): T | null {
+  if (value == null) return null;
+  if (typeof value !== 'string') return value;
+  return JSON.parse(value) as T;
+}
+
+function unixSecondsToISO(value: number | null | undefined, fallback: string): string {
+  if (typeof value !== 'number') return fallback;
+  return new Date(value * 1000).toISOString();
 }
 
 // Module-level cache: survives within a Worker isolate lifetime.
@@ -119,15 +130,15 @@ export async function upsertVNode(db: D1Queryable, entry: {
   now: number;
 }): Promise<void> {
   await db.prepare(
-    `INSERT INTO vnodes (vnode_id, anchor_id, vnode_index, proof_json, status, last_seen)
-     VALUES (?, ?, ?, ?, 'ACTIVE', ?)
+    `INSERT INTO vnodes (vnode_id, anchor_id, vnode_index, proof_json, status, last_seen, joined_at)
+     VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?)
      ON CONFLICT(vnode_id) DO UPDATE SET
        anchor_id = excluded.anchor_id,
        vnode_index = excluded.vnode_index,
        proof_json = excluded.proof_json,
        status = 'ACTIVE',
        last_seen = excluded.last_seen`,
-  ).bind(entry.vnode_id, entry.anchor_id, entry.vnode_index, entry.proof_json, entry.now).run();
+  ).bind(entry.vnode_id, entry.anchor_id, entry.vnode_index, entry.proof_json, entry.now, entry.now).run();
 }
 
 // deleteVNodesByAnchor removes all vnode records for the given anchor.
@@ -135,12 +146,133 @@ export async function deleteVNodesByAnchor(db: D1Queryable, anchorID: string): P
   await db.prepare('DELETE FROM vnodes WHERE anchor_id = ?').bind(anchorID).run();
 }
 
-// getVNodesByAnchor returns all active vnodes for the given anchor.
+// getVNodesByAnchor returns all registered vnodes for the given anchor.
 export async function getVNodesByAnchor(db: D1Queryable, anchorID: string): Promise<VNodeEntry[]> {
   const { results } = await db.prepare(
-    'SELECT vnode_id, vnode_index FROM vnodes WHERE anchor_id = ? AND status = ? ORDER BY vnode_index',
-  ).bind(anchorID, 'ACTIVE').all<{ vnode_id: string; vnode_index: number }>();
-  return results.map(r => ({ vnode_id: r.vnode_id, index: r.vnode_index }));
+    'SELECT vnode_id, vnode_index, status FROM vnodes WHERE anchor_id = ? ORDER BY vnode_index',
+  ).bind(anchorID).all<{ vnode_id: string; vnode_index: number; status: string }>();
+  return results.map(r => ({ vnode_id: r.vnode_id, index: r.vnode_index, status: r.status }));
+}
+
+interface LogicalVNodeRow {
+  vnode_id: string;
+  anchor_id: string;
+  vnode_index: number;
+  status: string;
+  last_seen: number;
+  joined_at: number | null;
+  report_count: number | null;
+  successor_id: string | null;
+  predecessor_id: string | null;
+  successor_list_size: number | null;
+  successor_list_capacity: number | null;
+  finger_table_coverage: number | null;
+  uptime_seconds: number | null;
+  maintenance_cycles: number | null;
+  maintenance_mode: string | null;
+  cache_hits: number | null;
+  cache_misses: number | null;
+  cache_size: number | null;
+  predecessor_list_size: number | null;
+  successor_list: string | null;
+  predecessor_list: string | null;
+  rtt_samples: string | null;
+  finger_nodes: string | null;
+  anchor_uri: string;
+  anchor_joined_at: string;
+  anchor_last_seen: string;
+  anchor_region: string | null;
+}
+
+function logicalVNodeFromRow(row: LogicalVNodeRow): TrackerNodeRecord {
+  return parseNodeJsonColumns({
+    node_id: row.vnode_id,
+    vnode_count: 0,
+    is_vnode: true,
+    anchor_id: row.anchor_id,
+    vnode_index: row.vnode_index,
+    uri: row.anchor_uri,
+    status: row.status,
+    joined_at: unixSecondsToISO(row.joined_at, row.anchor_joined_at),
+    last_seen: unixSecondsToISO(row.last_seen, row.anchor_last_seen),
+    report_count: row.report_count ?? 0,
+    successor_id: row.successor_id,
+    predecessor_id: row.predecessor_id,
+    successor_list_size: row.successor_list_size,
+    successor_list_capacity: row.successor_list_capacity,
+    finger_table_coverage: row.finger_table_coverage,
+    uptime_seconds: row.uptime_seconds,
+    maintenance_cycles: row.maintenance_cycles,
+    cert_json: null,
+    cert_expires_at: null,
+    region: row.anchor_region,
+    maintenance_mode: row.maintenance_mode,
+    cache_hits: row.cache_hits,
+    cache_misses: row.cache_misses,
+    cache_size: row.cache_size,
+    predecessor_list_size: row.predecessor_list_size,
+    successor_list: row.successor_list,
+    predecessor_list: row.predecessor_list,
+    rtt_samples: row.rtt_samples,
+    finger_nodes: row.finger_nodes,
+  });
+}
+
+const logicalVNodeSelect = `
+  SELECT
+    v.vnode_id,
+    v.anchor_id,
+    v.vnode_index,
+    v.status,
+    v.last_seen,
+    v.joined_at,
+    v.report_count,
+    v.successor_id,
+    v.predecessor_id,
+    v.successor_list_size,
+    v.successor_list_capacity,
+    v.finger_table_coverage,
+    v.uptime_seconds,
+    v.maintenance_cycles,
+    v.maintenance_mode,
+    v.cache_hits,
+    v.cache_misses,
+    v.cache_size,
+    v.predecessor_list_size,
+    v.successor_list,
+    v.predecessor_list,
+    v.rtt_samples,
+    v.finger_nodes,
+    a.uri AS anchor_uri,
+    a.joined_at AS anchor_joined_at,
+    a.last_seen AS anchor_last_seen,
+    a.region AS anchor_region
+  FROM vnodes v
+  INNER JOIN nodes a ON a.node_id = v.anchor_id`;
+
+export async function getLogicalVNodesByAnchors(db: D1Queryable, anchorIDs: string[]): Promise<TrackerNodeRecord[]> {
+  if (anchorIDs.length === 0) return [];
+  const out: TrackerNodeRecord[] = [];
+  const chunkSize = 90;
+  for (let i = 0; i < anchorIDs.length; i += chunkSize) {
+    const chunk = anchorIDs.slice(i, i + chunkSize);
+    const placeholders = chunk.map(() => '?').join(', ');
+    const { results } = await db.prepare(
+      `${logicalVNodeSelect}
+       WHERE v.anchor_id IN (${placeholders})
+       ORDER BY v.last_seen DESC`,
+    ).bind(...chunk).all<LogicalVNodeRow>();
+    out.push(...results.map(logicalVNodeFromRow));
+  }
+  return out;
+}
+
+export async function getLogicalVNodeByID(db: D1Queryable, vnodeID: string): Promise<TrackerNodeRecord | null> {
+  const row = await db.prepare(
+    `${logicalVNodeSelect}
+     WHERE v.vnode_id = ?`,
+  ).bind(vnodeID).first<LogicalVNodeRow>();
+  return row ? logicalVNodeFromRow(row) : null;
 }
 
 // checkVNodeIDCollision returns true if the given vnode_id is already registered.

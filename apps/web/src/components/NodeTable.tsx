@@ -57,6 +57,9 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleC
               >
                 <td className="py-2 pr-4 font-mono text-xs text-gray-300 whitespace-nowrap">
                   {truncateNodeId(node.node_id)}
+                  {node.is_vnode && (
+                    <span className="ml-1 font-sans text-[10px] uppercase tracking-wide text-indigo-400">vnode</span>
+                  )}
                 </td>
                 <td className="py-2 pr-4 text-xs text-gray-400 max-w-40 truncate">
                   {node.uri === null
@@ -82,7 +85,9 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleC
                 )}
                 {isAdmin && (
                   <td className="py-2 pr-4 text-xs text-gray-500 tabular-nums">
-                    {(node.vnode_count ?? 0) > 0
+                    {node.is_vnode
+                      ? <span className="px-1.5 py-0.5 rounded bg-indigo-900/30 text-indigo-300 text-xs">#{node.vnode_index ?? '—'}</span>
+                      : (node.vnode_count ?? 0) > 0
                       ? <span className="px-1.5 py-0.5 rounded bg-indigo-900/30 text-indigo-300 text-xs">{node.vnode_count}</span>
                       : '—'}
                   </td>

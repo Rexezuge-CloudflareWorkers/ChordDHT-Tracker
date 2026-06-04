@@ -4,7 +4,7 @@ import type { TrackerNodeRecord } from '@/types';
 import { sanitizeNode } from '@/types';
 import { errorResponse } from '@/errors';
 import { isAdmin } from '@/auth';
-import { parseNodeJsonColumns } from '@/db';
+import { parseNodeJsonColumns, getLogicalVNodeByID } from '@/db';
 
 const NODE_ID_REGEX = /^[0-9a-f]{40}$/;
 
@@ -20,12 +20,17 @@ class NodeGetRoute extends IBaseRoute {
       .bind(node_id)
       .first<TrackerNodeRecord>();
 
-    if (!node) {
-      return errorResponse('NODE_NOT_FOUND', `Node ${node_id} not found`, 404);
+    const admin = await isAdmin(c.req.raw, c.env);
+    if (node) {
+      return c.json(sanitizeNode(parseNodeJsonColumns({ ...node, is_vnode: false }), admin));
     }
 
-    const admin = await isAdmin(c.req.raw, c.env);
-    return c.json(sanitizeNode(parseNodeJsonColumns(node), admin));
+    if (admin) {
+      const vnode = await getLogicalVNodeByID(db, node_id);
+      if (vnode) return c.json(vnode);
+    }
+
+    return errorResponse('NODE_NOT_FOUND', `Node ${node_id} not found`, 404);
   }
 }
 
