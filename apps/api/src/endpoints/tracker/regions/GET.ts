@@ -3,7 +3,8 @@ import type { RouteContext } from '@/endpoints/IBaseRoute';
 
 class RegionsGetRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
-    const { results } = await c.env.DB.prepare(
+    const db = c.env.DB.withSession('first-unconstrained');
+    const { results } = await db.prepare(
       `SELECT region, COUNT(*) as count
        FROM nodes
        WHERE region IS NOT NULL

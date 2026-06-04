@@ -41,7 +41,8 @@ class CRLPostRoute extends IBaseRoute {
     }
 
     // Check that the new CRL version is greater than the current stored version.
-    const existing = await c.env.DB.prepare('SELECT version FROM crl ORDER BY id DESC LIMIT 1').first<{
+    const db = c.env.DB.withSession('first-primary');
+    const existing = await db.prepare('SELECT version FROM crl ORDER BY id DESC LIMIT 1').first<{
       version: number;
     }>();
     if (existing && typedCRL.version <= existing.version) {
@@ -49,7 +50,7 @@ class CRLPostRoute extends IBaseRoute {
     }
 
     const crlJson = JSON.stringify(typedCRL);
-    await c.env.DB.prepare('INSERT INTO crl (version, updated_at, crl_json) VALUES (?, ?, ?)')
+    await db.prepare('INSERT INTO crl (version, updated_at, crl_json) VALUES (?, ?, ?)')
       .bind(typedCRL.version, typedCRL.updated_at, crlJson)
       .run();
 

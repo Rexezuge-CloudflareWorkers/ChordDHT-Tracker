@@ -10,7 +10,9 @@ class StatsGetRoute extends IBaseRoute {
 
     const certExpiryCutoff = Math.floor(now.getTime() / 1000) + 30 * 86400;
 
-    const row = await c.env.DB.prepare(
+    const db = c.env.DB.withSession('first-unconstrained');
+
+    const row = await db.prepare(
       `SELECT
          COUNT(*)                                              AS total_nodes,
          SUM(CASE WHEN status = 'ACTIVE'   THEN 1 ELSE 0 END) AS active_nodes,
@@ -44,7 +46,7 @@ class StatsGetRoute extends IBaseRoute {
         avg_cache_hit_rate: number | null;
       }>();
 
-    const startedAt = await getStartedAt(c.env.DB, nowIso);
+    const startedAt = await getStartedAt(db, nowIso);
     const trackerUptimeSeconds = Math.floor((now.getTime() - new Date(startedAt).getTime()) / 1000);
 
     return c.json({

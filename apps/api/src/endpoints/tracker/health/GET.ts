@@ -6,7 +6,8 @@ class HealthGetRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
     const now = new Date();
     const nowIso = now.toISOString();
-    const startedAt = await getStartedAt(c.env.DB, nowIso);
+    const db = c.env.DB.withSession('first-primary');
+    const startedAt = await getStartedAt(db, nowIso);
     const uptimeSeconds = Math.floor((now.getTime() - new Date(startedAt).getTime()) / 1000);
     return c.json({ status: 'ok', uptime_seconds: uptimeSeconds, timestamp: nowIso });
   }

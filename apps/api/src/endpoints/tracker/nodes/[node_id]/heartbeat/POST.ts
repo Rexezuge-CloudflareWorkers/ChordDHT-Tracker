@@ -25,8 +25,9 @@ class NodeHeartbeatPostRoute extends IBaseRoute {
     }
 
     const now = new Date().toISOString();
+    const db = c.env.DB.withSession('first-primary');
 
-    const result = await c.env.DB.prepare(
+    const result = await db.prepare(
       `UPDATE nodes SET
          last_seen             = ?,
          status                = COALESCE(?, status),

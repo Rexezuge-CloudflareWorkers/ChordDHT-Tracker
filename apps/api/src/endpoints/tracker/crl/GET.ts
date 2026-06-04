@@ -4,7 +4,8 @@ import { errorResponse } from '@/errors';
 
 class CRLGetRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
-    const row = await c.env.DB.prepare('SELECT crl_json FROM crl ORDER BY id DESC LIMIT 1').first<{
+    const db = c.env.DB.withSession('first-unconstrained');
+    const row = await db.prepare('SELECT crl_json FROM crl ORDER BY id DESC LIMIT 1').first<{
       crl_json: string;
     }>();
 
