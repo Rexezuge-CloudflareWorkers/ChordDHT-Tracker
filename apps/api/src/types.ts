@@ -11,6 +11,9 @@ export interface Certificate {
 export interface TrackerNodeRecord {
   node_id: string;
   vnode_count: number | null;
+  is_vnode?: boolean;
+  anchor_id?: string | null;
+  vnode_index?: number | null;
   uri: string;
   status: string;
   joined_at: string;
@@ -31,10 +34,11 @@ export interface TrackerNodeRecord {
   cache_misses: number | null;
   cache_size: number | null;
   predecessor_list_size: number | null;
-  successor_list: string | null;
-  predecessor_list: string | null;
-  rtt_samples: string | null;
-  finger_nodes: string | null;
+  successor_list: string | string[] | null;
+  predecessor_list: string | string[] | null;
+  rtt_samples: string | Record<string, number> | null;
+  finger_nodes: string | string[] | null;
+  vnodes?: VNodeEntry[];
 }
 
 export type PublicTrackerNodeRecord = Omit<
@@ -148,6 +152,7 @@ export interface VNodeProof {
 export interface VNodeEntry {
   vnode_id: string;
   index: number;
+  status?: string;
   proof?: VNodeProof;
 }
 

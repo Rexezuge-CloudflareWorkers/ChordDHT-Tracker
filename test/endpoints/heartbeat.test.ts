@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ChordDHTTrackerWorker } from '@/workers';
 import { createD1, createStmt } from '../mocks/d1';
 import { createEnv } from '../mocks/env';
@@ -50,7 +50,7 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
   });
 
   it('returns 404 when node is not registered', async () => {
-    const db = createD1(createStmt({ changes: 0 }));
+    const db = createD1(createStmt({ changes: 0 }), createStmt({ changes: 0 }));
     const worker = new ChordDHTTrackerWorker();
     const res = await worker.fetch(
       new Request(HEARTBEAT_URL, {
@@ -65,6 +65,33 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe('NODE_NOT_FOUND');
+  });
+
+  it('persists topology for a registered vnode heartbeat', async () => {
+    const db = createD1(
+      createStmt({ changes: 0 }),
+      createStmt({ changes: 1 }),
+    );
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(HEARTBEAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...validBody,
+          successor_list: ['b'.repeat(40), 'd'.repeat(40)],
+          predecessor_list: ['c'.repeat(40)],
+          finger_nodes: ['d'.repeat(40)],
+          rtt_samples: { ['b'.repeat(40)]: 12 },
+        }),
+      }),
+      createEnv(db),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(200);
+    const calls = (db.prepare as ReturnType<typeof vi.fn>).mock.calls as string[][];
+    expect(calls[1][0]).toContain('UPDATE vnodes SET');
   });
 
   it('returns 400 for an invalid node_id format', async () => {

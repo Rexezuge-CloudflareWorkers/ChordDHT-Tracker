@@ -48,7 +48,9 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
       >
         <div className="flex items-start justify-between px-5 py-4 border-b border-gray-800 shrink-0">
           <div className="min-w-0">
-            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Node Detail</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
+              {node.is_vnode ? 'VNode Detail' : 'Node Detail'}
+            </p>
             <p className="font-mono text-sm text-white truncate">{truncateNodeId(node.node_id)}</p>
           </div>
           <button
@@ -85,6 +87,11 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                   </span>
                 ) : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
+              {node.is_vnode && (
+                <Row label="VNode Index">
+                  {node.vnode_index != null ? node.vnode_index : <NullValue />}
+                </Row>
+              )}
               <Row label="Joined">
                 {node.joined_at !== null ? new Date(node.joined_at).toLocaleString() : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
@@ -122,7 +129,12 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                   ? <span className="text-xs text-gray-300">{node.region}</span>
                   : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
-              {isAdmin && (node.vnode_count ?? 0) > 0 && (
+              {isAdmin && node.is_vnode && node.anchor_id && (
+                <Row label="Anchor">
+                  <NodeIdChip id={node.anchor_id} knownNodeIds={knownNodeIds} onNavigate={onNavigate} />
+                </Row>
+              )}
+              {isAdmin && !node.is_vnode && (node.vnode_count ?? 0) > 0 && (
                 <Row label="VNodes">
                   <span className="px-1.5 py-0.5 rounded bg-indigo-900/30 text-indigo-300 text-xs font-mono">
                     {node.vnode_count}

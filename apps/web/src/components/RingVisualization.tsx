@@ -168,6 +168,8 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
   const nodeIdSet = new Set(nodes.map(n => n.node_id));
   const angleMap = new Map(nodes.map(n => [n.node_id, nodeIdToAngle(n.node_id)]));
   const nodeMap = new Map(nodes.map(n => [n.node_id, n]));
+  const anchorNodes = nodes.filter(n => !n.is_vnode);
+  const logicalVNodeIdSet = new Set(nodes.filter(n => n.is_vnode).map(n => n.node_id));
 
   const hoveredNode = hoveredNodeId ? nodeMap.get(hoveredNodeId) : undefined;
 
@@ -182,9 +184,13 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
     return { x: CX + RING_R * Math.cos(a), y: CY + RING_R * Math.sin(a) };
   }
 
+  function nodeRadius(id: string): number {
+    return nodeMap.get(id)?.is_vnode ? VNODE_DOT_R : DOT_R;
+  }
+
   const vnodeEntries: { vnodeId: string; index: number; anchor: TrackerNodeRecord }[] = [];
   if (isAdmin) {
-    for (const node of nodes) {
+    for (const node of anchorNodes) {
       for (const v of node.vnodes ?? []) {
         vnodeEntries.push({ vnodeId: v.vnode_id, index: v.index, anchor: node });
       }
@@ -257,7 +263,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
               const from = nodePos(node.node_id);
               const to = nodePos(targetId);
               if (!from || !to) return null;
-              const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 3);
+              const end = shrinkToward(from.x, from.y, to.x, to.y, nodeRadius(targetId) + 3);
               const rtt = node.rtt_samples?.[targetId] ?? null;
               const color = rttColor(rtt, 0.55);
               const opacity = lineVis(hoveredNodeId, node.node_id, targetId, 1, 0.04);
@@ -283,7 +289,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             const from = nodePos(node.node_id);
             const to = nodePos(node.successor_id);
             if (!from || !to) return null;
-            const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 4);
+            const end = shrinkToward(from.x, from.y, to.x, to.y, nodeRadius(node.successor_id) + 4);
             const rtt = node.rtt_samples?.[node.successor_id] ?? null;
             const isHovered = hoveredNodeId === node.node_id || hoveredNodeId === node.successor_id;
             const color = rttColor(rtt, isHovered ? 0.95 : 0.7);
@@ -310,7 +316,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
               const from = nodePos(node.node_id);
               const to = nodePos(predId);
               if (!from || !to) return null;
-              const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 3);
+              const end = shrinkToward(from.x, from.y, to.x, to.y, nodeRadius(predId) + 3);
               const opacity = lineVis(hoveredNodeId, node.node_id, predId, 0.5, 0.03);
               return (
                 <line
@@ -336,7 +342,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
               if (!nodeIdSet.has(fingerId) || fingerId === hoveredNode.node_id) return null;
               const to = nodePos(fingerId);
               if (!to) return null;
-              const end = shrinkToward(from.x, from.y, to.x, to.y, DOT_R + 3);
+              const end = shrinkToward(from.x, from.y, to.x, to.y, nodeRadius(fingerId) + 3);
               const rtt = hoveredNode.rtt_samples?.[fingerId] ?? null;
               const color = rttColor(rtt, 0.75);
               return (
@@ -358,7 +364,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             const from = nodePos(anchor.node_id);
             const to = vnodePos(vnodeId);
             if (!from) return null;
-            const isVnodeHovered = hoveredVnodeId === vnodeId;
+            const isVnodeHovered = hoveredVnodeId === vnodeId || hoveredNodeId === vnodeId;
             const isAnchorHovered = hoveredNodeId === anchor.node_id;
             const isStaleSpoke = staleCutoff != null && anchor.last_seen !== null && new Date(anchor.last_seen) < staleCutoff;
             const spokeStatus = isStaleSpoke ? 'STALE' : (anchor.status ?? 'UNKNOWN');
@@ -382,6 +388,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
 
           {/* ── Layer 6: VNode dots ── */}
           {isAdmin && visibleLayers.vnodes && vnodeEntries.map(({ vnodeId, index, anchor }) => {
+            if (logicalVNodeIdSet.has(vnodeId)) return null;
             const { x, y } = vnodePos(vnodeId);
             const isStale = staleCutoff != null && anchor.last_seen !== null && new Date(anchor.last_seen) < staleCutoff;
             const displayStatus = isStale ? 'STALE' : (anchor.status ?? 'UNKNOWN');
@@ -427,6 +434,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             const color = node.status === null ? '#ffffff' : STATUS_COLORS[displayStatus] ?? STATUS_COLORS['UNKNOWN'];
             const isSelected = selectedNodeId === node.node_id;
             const avg = avgRTT(node.rtt_samples);
+            const dotR = node.is_vnode ? VNODE_DOT_R : DOT_R;
 
             return (
               <g key={node.node_id}>
@@ -434,7 +442,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
                 {avg !== null && (
                   <circle
                     cx={x} cy={y}
-                    r={DOT_R + 5}
+                    r={dotR + 5}
                     fill="none"
                     stroke={rttColor(avg)}
                     strokeWidth={2}
@@ -445,7 +453,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
                 {isSelected && (
                   <circle
                     cx={x} cy={y}
-                    r={DOT_R + (avg !== null ? 10 : 5)}
+                    r={dotR + (avg !== null ? 10 : 5)}
                     fill="none"
                     stroke="#6366f1"
                     strokeWidth={2}
@@ -455,10 +463,11 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
                 )}
                 <circle
                   cx={x} cy={y}
-                  r={DOT_R}
+                  r={dotR}
                   fill={color}
                   stroke={isSelected ? '#ffffff' : '#101319'}
-                  strokeWidth={isSelected ? 2.5 : 2}
+                  strokeWidth={isSelected ? 2.5 : node.is_vnode ? 1.5 : 2}
+                  fillOpacity={node.is_vnode ? 0.72 : 1}
                   style={{ cursor: 'pointer' }}
                   onMouseDown={(e) => e.stopPropagation()}
                   onMouseEnter={() => {
@@ -468,7 +477,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
                   onMouseLeave={() => setHoveredNodeId(null)}
                   onClick={() => { if (!hasDraggedRef.current) onNodeSelect(node.node_id); }}
                 />
-                {nodes.length <= 24 && (
+                {nodes.length <= 24 && !node.is_vnode && (
                   <text
                     x={x + (x > CX ? DOT_R + 4 : -(DOT_R + 4))}
                     y={y + 4}
@@ -507,6 +516,8 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             style={{ lineHeight: '1.6' }}
           >
             <div className="text-gray-100 truncate">{node.node_id.slice(0, 22)}…</div>
+            {node.is_vnode && <div className="text-indigo-300">VNode #{node.vnode_index ?? '—'}</div>}
+            {node.is_vnode && node.anchor_id && <div className="text-gray-500">Anchor: {truncateNodeId(node.anchor_id)}</div>}
             <div className="text-gray-400 truncate">{node.uri !== null ? node.uri.replace('https://', '') : '******'}</div>
             <div style={{ color: statusColor }}>{tooltipStatus}</div>
             <div className="text-gray-500">Last seen: {node.last_seen !== null ? formatRelativeTime(node.last_seen) : '******'}</div>
