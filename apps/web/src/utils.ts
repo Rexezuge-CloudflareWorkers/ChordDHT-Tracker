@@ -18,9 +18,10 @@ export function nodeIdToAngle(nodeId: string): number {
 }
 
 export function formatUptime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
+  const wholeSeconds = Math.floor(seconds);
+  if (wholeSeconds < 60) return `${wholeSeconds}s`;
+  if (wholeSeconds < 3600) return `${Math.floor(wholeSeconds / 60)}m ${wholeSeconds % 60}s`;
+  const h = Math.floor(wholeSeconds / 3600);
+  const m = Math.floor((wholeSeconds % 3600) / 60);
   return `${h}h ${m}m`;
 }
