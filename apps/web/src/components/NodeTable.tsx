@@ -41,7 +41,7 @@ export function NodeTable({
             <th className="pb-2 pr-4 font-medium">URI</th>
             <th className="pb-2 pr-4 font-medium">Status</th>
             {isAdmin && <th className="pb-2 pr-4 font-medium">Region</th>}
-            {isAdmin && <th className="pb-2 pr-4 font-medium">VNodes</th>}
+            {isAdmin && <th className="pb-2 pr-4 font-medium">Virtual Nodes</th>}
             <th className="pb-2 pr-4 font-medium">Last Seen</th>
             <th className="pb-2 font-medium">Reports</th>
           </tr>
@@ -66,7 +66,7 @@ export function NodeTable({
                 <td className="py-2 pr-4 font-mono text-xs text-gray-300 whitespace-nowrap">
                   {truncateNodeId(node.node_id)}
                   {node.is_vnode && (
-                    <span className="ml-1 font-sans text-[10px] uppercase tracking-wide text-indigo-400">vnode</span>
+                    <span className="ml-1 font-sans text-[10px] uppercase tracking-wide text-indigo-400">Virtual Node</span>
                   )}
                 </td>
                 <td className="py-2 pr-4 text-xs text-gray-400 max-w-40 truncate">
