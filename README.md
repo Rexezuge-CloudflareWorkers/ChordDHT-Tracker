@@ -141,25 +141,43 @@ All fields are optional; omitted fields leave the stored value unchanged. `maint
 **Stats — `GET /tracker/stats`**
 ```json
 {
-  "total_nodes": 15,
-  "active_nodes": 13,
-  "isolated_nodes": 1,
-  "leaving_nodes": 1,
-  "stale_nodes": 2,
-  "avg_finger_table_coverage": 0.82,
-  "avg_uptime_seconds": 1800,
-  "oldest_node_joined_at": "2026-05-01T00:00:00Z",
-  "newest_node_joined_at": "2026-05-30T11:00:00Z",
-  "expiring_cert_nodes": 2,
-  "active_maintenance_nodes": 3,
-  "avg_cache_hit_rate": 0.8,
+  "anchor_nodes": {
+    "total_nodes": 15,
+    "active_nodes": 13,
+    "isolated_nodes": 1,
+    "leaving_nodes": 1,
+    "stale_nodes": 2,
+    "avg_finger_table_coverage": 0.82,
+    "avg_uptime_seconds": 1800,
+    "oldest_node_joined_at": "2026-05-01T00:00:00Z",
+    "newest_node_joined_at": "2026-05-30T11:00:00Z",
+    "expiring_cert_nodes": 2,
+    "active_maintenance_nodes": 3,
+    "avg_cache_hit_rate": 0.8
+  },
+  "vnodes": {
+    "total_nodes": 40,
+    "active_nodes": 37,
+    "isolated_nodes": 2,
+    "leaving_nodes": 1,
+    "stale_nodes": 4,
+    "avg_finger_table_coverage": 0.79,
+    "avg_uptime_seconds": 1600,
+    "oldest_node_joined_at": "2026-05-01T00:05:00Z",
+    "newest_node_joined_at": "2026-05-30T11:05:00Z",
+    "expiring_cert_nodes": 0,
+    "active_maintenance_nodes": 8,
+    "avg_cache_hit_rate": 0.76
+  },
   "tracker_uptime_seconds": 7200,
   "stale_threshold_seconds": 180,
   "stats_generated_at": "2026-05-30T12:00:00Z"
 }
 ```
 
-- `expiring_cert_nodes` — nodes whose `cert_expires_at` is within the next 30 days.
+- `anchor_nodes` — summary data from registered anchor records in the `nodes` table.
+- `vnodes` — summary data from virtual node records in the `vnodes` table.
+- `expiring_cert_nodes` — nodes whose `cert_expires_at` is within the next 30 days; this is always `0` for `vnodes` because vnode records do not store certificates.
 - `active_maintenance_nodes` — nodes currently reporting `maintenance_mode = "ACTIVE_MAINTENANCE"`.
 - `avg_cache_hit_rate` — mean `cache_hits / (cache_hits + cache_misses)` across nodes that reported both values; `null` if no data.
 
@@ -262,7 +280,7 @@ If `ADMIN_SECRET` is absent or set to `UNCONFIGURED`, all admin-auth checks retu
 
 A Vite + React SPA (`apps/web/`) is served as Cloudflare Workers Assets and shows:
 
-- **Stats panel** — active/isolated/stale node counts, average finger table coverage, expiring cert count, active maintenance node count, and average cache hit rate
+- **Stats panel** — separate anchor-node and vnode summary groups with status counts, stale counts, average finger table coverage, active maintenance count, and average cache hit rate
 - **Ring visualization** — SVG circle plot of all nodes positioned by their SHA-1 ID angle, color-coded by status
 - **Node table** — sortable list; click a row to open the detail panel
 - **Node detail panel** — full ring-state breakdown for a selected node (successor/predecessor, finger table coverage, uptime, maintenance mode, cache stats)

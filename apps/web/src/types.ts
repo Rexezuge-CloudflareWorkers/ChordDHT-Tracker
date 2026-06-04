@@ -36,7 +36,7 @@ export interface RegionsResponse {
   regions: Record<string, number>;
 }
 
-export interface StatsResponse {
+export interface StatsSummary {
   total_nodes: number;
   active_nodes: number;
   isolated_nodes: number;
@@ -46,11 +46,17 @@ export interface StatsResponse {
   avg_uptime_seconds: number | null;
   oldest_node_joined_at: string | null;
   newest_node_joined_at: string | null;
+  expiring_cert_nodes: number;
+  active_maintenance_nodes: number;
+  avg_cache_hit_rate: number | null;
+}
+
+export interface StatsResponse {
+  anchor_nodes: StatsSummary;
+  vnodes: StatsSummary;
   tracker_uptime_seconds: number;
   stale_threshold_seconds: number;
   stats_generated_at: string;
-  active_maintenance_nodes: number;
-  avg_cache_hit_rate: number | null;
 }
 
 export interface NodesResponse {
