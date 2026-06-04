@@ -49,7 +49,7 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
         <div className="flex items-start justify-between px-5 py-4 border-b border-gray-800 shrink-0">
           <div className="min-w-0">
             <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
-              {node.is_vnode ? 'VNode Detail' : 'Node Detail'}
+              {node.is_vnode ? 'Virtual Node Detail' : 'Node Detail'}
             </p>
             <p className="font-mono text-sm text-white truncate">{truncateNodeId(node.node_id)}</p>
           </div>
@@ -88,7 +88,7 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                 ) : isAdmin ? <NullValue /> : <RedactedValue />}
               </Row>
               {node.is_vnode && (
-                <Row label="VNode Index">
+                <Row label="Virtual Node Index">
                   {node.vnode_index != null ? node.vnode_index : <NullValue />}
                 </Row>
               )}
@@ -135,7 +135,7 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                 </Row>
               )}
               {isAdmin && !node.is_vnode && (node.vnode_count ?? 0) > 0 && (
-                <Row label="VNodes">
+                <Row label="Virtual Nodes">
                   <div className="flex flex-wrap justify-end gap-1.5">
                     {node.vnodes && node.vnodes.length > 0 ? (
                       node.vnodes.map(v => (

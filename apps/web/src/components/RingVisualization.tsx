@@ -359,7 +359,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             });
           })()}
 
-          {/* ── Layer 5: VNode spoke lines ── */}
+          {/* ── Layer 5: Virtual node spoke lines ── */}
           {isAdmin && visibleLayers.vnodes && vnodeEntries.map(({ vnodeId, index: _idx, anchor }) => {
             const from = nodePos(anchor.node_id);
             const to = vnodePos(vnodeId);
@@ -386,7 +386,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             );
           })}
 
-          {/* ── Layer 6: VNode dots ── */}
+          {/* ── Layer 6: Virtual node dots ── */}
           {isAdmin && visibleLayers.vnodes && vnodeEntries.map(({ vnodeId, index, anchor }) => {
             if (logicalVNodeIdSet.has(vnodeId)) return null;
             const { x, y } = vnodePos(vnodeId);
@@ -516,7 +516,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             style={{ lineHeight: '1.6' }}
           >
             <div className="text-gray-100 truncate">{node.node_id.slice(0, 22)}…</div>
-            {node.is_vnode && <div className="text-indigo-300">VNode #{node.vnode_index ?? '—'}</div>}
+            {node.is_vnode && <div className="text-indigo-300">Virtual Node #{node.vnode_index ?? '—'}</div>}
             {node.is_vnode && node.anchor_id && <div className="text-gray-500">Anchor: {truncateNodeId(node.anchor_id)}</div>}
             <div className="text-gray-400 truncate">{node.uri !== null ? node.uri.replace('https://', '') : '******'}</div>
             <div style={{ color: statusColor }}>{tooltipStatus}</div>
@@ -543,7 +543,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
         );
       })()}
 
-      {/* VNode tooltip */}
+      {/* Virtual node tooltip */}
       {vnodeTooltip && (() => {
         const { vnodeId, vnodeIndex, anchor } = vnodeTooltip;
         const a = nodeIdToAngle(vnodeId);
@@ -557,7 +557,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             className={`absolute ${posClass} w-52 rounded-md border border-gray-700 bg-gray-800 p-2.5 text-xs font-mono pointer-events-none`}
             style={{ lineHeight: '1.6' }}
           >
-            <div className="text-indigo-300 text-xs font-sans mb-1">VNode #{vnodeIndex}</div>
+            <div className="text-indigo-300 text-xs font-sans mb-1">Virtual Node #{vnodeIndex}</div>
             <div className="text-gray-100 truncate">{vnodeId.slice(0, 22)}…</div>
             <div className="text-gray-500 mt-1">Anchor:</div>
             <div className="text-gray-300 truncate">{anchor.node_id.slice(0, 22)}…</div>
@@ -594,7 +594,7 @@ export function RingVisualization({ nodes, selectedNodeId, onNodeSelect, isAdmin
             { key: 'backupSuccessors', label: 'Backup successors', icon: <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="rgba(99,102,241,0.5)" strokeWidth="0.8" /></svg> },
             { key: 'predecessors',     label: 'Predecessors',      icon: <svg width="24" height="8"><line x1="2" y1="4" x2="22" y2="4" stroke="#a78bfa" strokeWidth="0.8" strokeDasharray="4 3" /></svg> },
             { key: 'fingerTable',      label: 'Finger table (hover)', icon: <svg width="24" height="8"><path d="M2,6 Q12,1 22,4" fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="1" /></svg> },
-            { key: 'vnodes',           label: 'Virtual nodes',    icon: <svg width="30" height="8"><circle cx="4" cy="4" r="3" fill="#6366f1" fillOpacity="0.55" stroke="#101319" strokeWidth="1" /><line x1="4" y1="4" x2="26" y2="4" stroke="#6366f1" strokeWidth="0.7" strokeDasharray="3 3" strokeOpacity="0.5" /><circle cx="26" cy="4" r="5" fill="#22c55e" stroke="#101319" strokeWidth="1.5" /></svg> },
+            { key: 'vnodes',           label: 'Virtual Nodes',    icon: <svg width="30" height="8"><circle cx="4" cy="4" r="3" fill="#6366f1" fillOpacity="0.55" stroke="#101319" strokeWidth="1" /><line x1="4" y1="4" x2="26" y2="4" stroke="#6366f1" strokeWidth="0.7" strokeDasharray="3 3" strokeOpacity="0.5" /><circle cx="26" cy="4" r="5" fill="#22c55e" stroke="#101319" strokeWidth="1.5" /></svg> },
           ] as { key: LayerKey; label: string; icon: React.ReactNode }[]
         ).filter(({ key }) => key !== 'vnodes' || isAdmin).map(({ key, label, icon }) => (
           <label

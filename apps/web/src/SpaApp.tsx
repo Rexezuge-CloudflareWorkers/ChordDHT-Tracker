@@ -29,13 +29,16 @@ export default function SpaApp() {
 
   useEffect(() => { regionFilterRef.current = regionFilter; }, [regionFilter]);
 
-  const selectedNode = nodes.find(n => n.node_id === selectedNodeId) ?? null;
-  const knownNodeIds = useMemo(() => new Set(nodes.map(n => n.node_id)), [nodes]);
+  const isAdmin = adminToken !== null;
   const visibleNodes = useMemo(() => {
+    if (!isAdmin) return nodes.filter(n => !n.is_vnode);
     if (nodeTypeFilter === 'anchors') return nodes.filter(n => !n.is_vnode);
     if (nodeTypeFilter === 'vnodes') return nodes.filter(n => n.is_vnode);
     return nodes;
-  }, [nodes, nodeTypeFilter]);
+  }, [nodes, nodeTypeFilter, isAdmin]);
+  const accessibleNodes = isAdmin ? nodes : visibleNodes;
+  const selectedNode = accessibleNodes.find(n => n.node_id === selectedNodeId) ?? null;
+  const knownNodeIds = useMemo(() => new Set(accessibleNodes.map(n => n.node_id)), [accessibleNodes]);
   const staleCutoff = useMemo(
     () =>
       stats?.stats_generated_at && stats?.stale_threshold_seconds
@@ -93,11 +96,12 @@ export default function SpaApp() {
     setAdminToken(null);
     regionFilterRef.current = '';
     setRegionFilter('');
+    setNodeTypeFilter('all');
     setAvailableRegions({});
+    setSelectedNodeId(null);
+    setNodes(prev => prev.filter(n => !n.is_vnode));
     void refresh();
   };
-
-  const isAdmin = adminToken !== null;
 
   return (
     <div className="min-h-screen" style={{ background: '#101319' }}>
@@ -161,7 +165,7 @@ export default function SpaApp() {
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
             <h2 className="text-sm font-medium text-gray-400 mb-4">Ring Topology</h2>
             <RingVisualization
-              nodes={nodes}
+              nodes={accessibleNodes}
               selectedNodeId={selectedNodeId}
               onNodeSelect={setSelectedNodeId}
               isAdmin={isAdmin}
@@ -173,34 +177,36 @@ export default function SpaApp() {
               <h2 className="text-sm font-medium text-gray-400">
                 Nodes{' '}
                 <span className="text-gray-600">
-                  ({visibleNodes.length}{visibleNodes.length !== nodes.length ? ` / ${nodes.length}` : ''})
+                  ({visibleNodes.length}{isAdmin && visibleNodes.length !== nodes.length ? ` / ${nodes.length}` : ''})
                 </span>
               </h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  aria-label="Filter nodes by type"
-                  value={nodeTypeFilter}
-                  onChange={(e) => setNodeTypeFilter(e.target.value as NodeTypeFilter)}
-                  className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 cursor-pointer"
-                >
-                  <option value="all">All nodes</option>
-                  <option value="anchors">Anchor nodes</option>
-                  <option value="vnodes">VNodes</option>
-                </select>
-                {isAdmin && Object.keys(availableRegions).length > 0 && (
+              {isAdmin && (
+                <div className="flex flex-wrap items-center gap-2">
                   <select
-                    aria-label="Filter nodes by region"
-                    value={regionFilter}
-                    onChange={(e) => { setRegionFilter(e.target.value); void refresh(); }}
+                    aria-label="Filter nodes by type"
+                    value={nodeTypeFilter}
+                    onChange={(e) => setNodeTypeFilter(e.target.value as NodeTypeFilter)}
                     className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 cursor-pointer"
                   >
-                    <option value="">All regions</option>
-                    {Object.entries(availableRegions).map(([r, count]) => (
-                      <option key={r} value={r}>{r} ({count})</option>
-                    ))}
+                    <option value="all">All Nodes</option>
+                    <option value="anchors">Anchor Nodes</option>
+                    <option value="vnodes">Virtual Nodes</option>
                   </select>
-                )}
-              </div>
+                  {Object.keys(availableRegions).length > 0 && (
+                    <select
+                      aria-label="Filter nodes by region"
+                      value={regionFilter}
+                      onChange={(e) => { setRegionFilter(e.target.value); void refresh(); }}
+                      className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 cursor-pointer"
+                    >
+                      <option value="">All Regions</option>
+                      {Object.entries(availableRegions).map(([r, count]) => (
+                        <option key={r} value={r}>{r} ({count})</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
             </div>
             <NodeTable
               nodes={visibleNodes}
