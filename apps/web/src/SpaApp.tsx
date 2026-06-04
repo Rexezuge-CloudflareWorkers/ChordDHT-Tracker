@@ -8,6 +8,8 @@ import { NodeDetailPanel } from './components/NodeDetailPanel';
 import { LoginModal } from './components/LoginModal';
 import { REFRESH_INTERVAL_MS } from './constants';
 
+type NodeTypeFilter = 'all' | 'anchors' | 'vnodes';
+
 export default function SpaApp() {
   const [nodes, setNodes] = useState<TrackerNodeRecord[]>([]);
   const [stats, setStats] = useState<StatsResponse | null>(null);
@@ -20,6 +22,7 @@ export default function SpaApp() {
   );
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [regionFilter, setRegionFilter] = useState<string>('');
+  const [nodeTypeFilter, setNodeTypeFilter] = useState<NodeTypeFilter>('all');
   const [availableRegions, setAvailableRegions] = useState<Record<string, number>>({});
   const adminTokenRef = useRef(adminToken);
   const regionFilterRef = useRef(regionFilter);
@@ -28,6 +31,11 @@ export default function SpaApp() {
 
   const selectedNode = nodes.find(n => n.node_id === selectedNodeId) ?? null;
   const knownNodeIds = useMemo(() => new Set(nodes.map(n => n.node_id)), [nodes]);
+  const visibleNodes = useMemo(() => {
+    if (nodeTypeFilter === 'anchors') return nodes.filter(n => !n.is_vnode);
+    if (nodeTypeFilter === 'vnodes') return nodes.filter(n => n.is_vnode);
+    return nodes;
+  }, [nodes, nodeTypeFilter]);
   const staleCutoff = useMemo(
     () =>
       stats?.stats_generated_at && stats?.stale_threshold_seconds
@@ -161,29 +169,46 @@ export default function SpaApp() {
             />
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-2 shrink-0 gap-2">
+            <div className="flex flex-wrap items-center justify-between mb-2 shrink-0 gap-2">
               <h2 className="text-sm font-medium text-gray-400">
-                Nodes <span className="text-gray-600">({nodes.length})</span>
+                Nodes{' '}
+                <span className="text-gray-600">
+                  ({visibleNodes.length}{visibleNodes.length !== nodes.length ? ` / ${nodes.length}` : ''})
+                </span>
               </h2>
-              {isAdmin && Object.keys(availableRegions).length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
                 <select
-                  value={regionFilter}
-                  onChange={(e) => { setRegionFilter(e.target.value); void refresh(); }}
+                  aria-label="Filter nodes by type"
+                  value={nodeTypeFilter}
+                  onChange={(e) => setNodeTypeFilter(e.target.value as NodeTypeFilter)}
                   className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 cursor-pointer"
                 >
-                  <option value="">All regions</option>
-                  {Object.entries(availableRegions).map(([r, count]) => (
-                    <option key={r} value={r}>{r} ({count})</option>
-                  ))}
+                  <option value="all">All nodes</option>
+                  <option value="anchors">Anchor nodes</option>
+                  <option value="vnodes">VNodes</option>
                 </select>
-              )}
+                {isAdmin && Object.keys(availableRegions).length > 0 && (
+                  <select
+                    aria-label="Filter nodes by region"
+                    value={regionFilter}
+                    onChange={(e) => { setRegionFilter(e.target.value); void refresh(); }}
+                    className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 cursor-pointer"
+                  >
+                    <option value="">All regions</option>
+                    {Object.entries(availableRegions).map(([r, count]) => (
+                      <option key={r} value={r}>{r} ({count})</option>
+                    ))}
+                  </select>
+                )}
+              </div>
             </div>
             <NodeTable
-              nodes={nodes}
+              nodes={visibleNodes}
               selectedNodeId={selectedNodeId}
               onNodeSelect={setSelectedNodeId}
               isAdmin={isAdmin}
               staleCutoff={staleCutoff}
+              emptyMessage={nodes.length === 0 ? 'No nodes registered' : 'No nodes match this filter'}
             />
           </div>
         </div>

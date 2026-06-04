@@ -9,9 +9,17 @@ interface Props {
   onNodeSelect: (nodeId: string) => void;
   isAdmin: boolean;
   staleCutoff?: Date | null;
+  emptyMessage?: string;
 }
 
-export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleCutoff }: Props) {
+export function NodeTable({
+  nodes,
+  selectedNodeId,
+  onNodeSelect,
+  isAdmin,
+  staleCutoff,
+  emptyMessage = 'No nodes registered',
+}: Props) {
   const sorted = [...nodes].sort(
     (a, b) => new Date(b.last_seen ?? 0).getTime() - new Date(a.last_seen ?? 0).getTime(),
   );
@@ -19,7 +27,7 @@ export function NodeTable({ nodes, selectedNodeId, onNodeSelect, isAdmin, staleC
   if (sorted.length === 0) {
     return (
       <div className="flex items-center justify-center flex-1 text-gray-500 text-sm">
-        No nodes registered
+        {emptyMessage}
       </div>
     );
   }
