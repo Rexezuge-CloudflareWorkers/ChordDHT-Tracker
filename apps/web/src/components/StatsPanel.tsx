@@ -86,12 +86,12 @@ export function StatsPanel({ stats }: Props) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
         <SummaryGroup title="Anchor Nodes" summary={stats.anchor_nodes} showCerts />
-        <SummaryGroup title="Virtual Nodes" summary={stats.vnodes} />
+        <SummaryGroup title="VNodes" summary={stats.vnodes} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <StatCard label="Tracker Uptime" value={formatUptime(stats.tracker_uptime_seconds)} />
         <StatCard label="Stale Window" value={formatUptime(stats.stale_threshold_seconds)} />
-        <StatCard label="Virtual Node Ratio" value={vnodeAnchorRatio} />
+        <StatCard label="VNode Ratio" value={vnodeAnchorRatio} />
         <StatCard label="Stats Generated" value={new Date(stats.stats_generated_at).toLocaleTimeString()} />
       </div>
     </div>
