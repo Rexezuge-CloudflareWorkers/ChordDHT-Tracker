@@ -21,9 +21,10 @@ interface SummaryGroupProps {
   title: string;
   summary: StatsSummary;
   showCerts?: boolean;
+  children?: React.ReactNode;
 }
 
-function SummaryGroup({ title, summary, showCerts = false }: SummaryGroupProps) {
+function SummaryGroup({ title, summary, showCerts = false, children }: SummaryGroupProps) {
   const coverage =
     summary.avg_finger_table_coverage != null
       ? `${(summary.avg_finger_table_coverage * 100).toFixed(1)}%`
@@ -55,6 +56,7 @@ function SummaryGroup({ title, summary, showCerts = false }: SummaryGroupProps) 
         {showCerts && (
           <StatCard label="Expiring Certs" value={summary.expiring_cert_nodes} color="#f97316" />
         )}
+        {children}
       </div>
     </section>
   );
@@ -69,8 +71,8 @@ export function StatsPanel({ stats }: Props) {
             <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg p-4 h-60 animate-pulse" />
           ))}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg p-4 h-20 animate-pulse" />
           ))}
         </div>
@@ -86,12 +88,13 @@ export function StatsPanel({ stats }: Props) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
         <SummaryGroup title="Anchor Nodes" summary={stats.anchor_nodes} showCerts />
-        <SummaryGroup title="VNodes" summary={stats.vnodes} />
+        <SummaryGroup title="VNodes" summary={stats.vnodes}>
+          <StatCard label="VNode Ratio" value={vnodeAnchorRatio} />
+        </SummaryGroup>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard label="Tracker Uptime" value={formatUptime(stats.tracker_uptime_seconds)} />
         <StatCard label="Stale Window" value={formatUptime(stats.stale_threshold_seconds)} />
-        <StatCard label="VNode Ratio" value={vnodeAnchorRatio} />
         <StatCard label="Stats Generated" value={new Date(stats.stats_generated_at).toLocaleTimeString()} />
       </div>
     </div>
