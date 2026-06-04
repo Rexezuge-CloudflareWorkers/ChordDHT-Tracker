@@ -88,7 +88,7 @@ export function StatsPanel({ stats }: Props) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
         <SummaryGroup title="Anchor Nodes" summary={stats.anchor_nodes} showCerts />
-        <SummaryGroup title="VNodes" summary={stats.vnodes}>
+        <SummaryGroup title="Virtual Nodes" summary={stats.vnodes}>
           <StatCard label="VNode Ratio" value={vnodeAnchorRatio} />
         </SummaryGroup>
       </div>
