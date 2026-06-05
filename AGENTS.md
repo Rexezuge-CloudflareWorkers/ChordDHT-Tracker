@@ -4,7 +4,7 @@ Guidance for agents working in ChordDHT-Tracker.
 
 ## Overview
 
-ChordDHT-Tracker is a Cloudflare Worker API that tracks nodes in a Chord DHT (Distributed Hash Table) ring, with a Vite React management UI in a pnpm workspace. The API provides endpoints for node registration, heartbeats, seed discovery, and ring statistics.
+ChordDHT-Tracker is a Cloudflare Worker API that tracks nodes in a Chord DHT (Distributed Hash Table) ring, with a Vite React management UI in a pnpm workspace. The API provides endpoints for node registration, heartbeats, seed discovery, ring statistics, vnode policy, and v5.0 stable-base monitoring.
 
 ## Cloudflare Documentation
 
@@ -58,6 +58,7 @@ Run `pnpm run typegen` after changing bindings in Wrangler config.
 - `apps/api/src/endpoints/IBaseRoute.ts` is the abstract base class all endpoint classes extend.
 - `apps/api/src/auth.ts` — Web Crypto helpers: cert verify, CRL verify, admin token auth, URI normalise + SHA-1 hash.
 - `apps/api/src/db.ts` owns D1 access helpers (config reads, CA key import/cache, tracker_meta management, and v4.0 vnode helpers: `upsertVNode`, `getVNodesByAnchor`, `checkVNodeIDCollision`, `updateAnchorVnodeCount`, `verifyVNodeProof`, `deriveVNodeID`).
+- v5.0 stable-base helpers live in `apps/api/src/db.ts` (`getStableBaseMemberURIs`, `getStableBaseMinSize`) and `apps/api/src/endpoints/tracker/stable_base/GET.ts`. Stable-base liveness is on-demand from stored node `last_seen`/`status`; the Worker does not actively ping nodes.
 - `apps/api/src/errors.ts` provides the `errorResponse` helper for structured error responses.
 - `apps/api/src/types.ts` contains domain types (`TrackerNodeRecord`, `PublicTrackerNodeRecord`, `NodeInfo`, `HeartbeatBody`, `Certificate`, `sanitizeNode`).
 - `apps/api/src/generated/spa-shell.ts` — auto-generated SPA shell stub (produced by `postinstall`).
@@ -83,6 +84,7 @@ src/endpoints/tracker/crl/POST.ts                    → POST /tracker/crl
 src/endpoints/tracker/regions/GET.ts                 → GET /tracker/regions
 src/endpoints/tracker/admin/verify/GET.ts            → GET /tracker/admin/verify
 src/endpoints/tracker/policy/GET.ts                  → GET /tracker/policy
+src/endpoints/tracker/stable_base/GET.ts             → GET /tracker/stable_base
 ```
 
 Each endpoint file exports a single class extending `IBaseRoute`. The worker instantiates the class and calls `.handle(c)` as the Hono handler.
@@ -93,6 +95,7 @@ Each endpoint file exports a single class extending `IBaseRoute`. The worker ins
 - `GET /tracker/stats` — Ring-level aggregate statistics
 - `POST /tracker/nodes` — Register a node (anchor or vnode); v4.0: accepts optional `vnodes[]` array in body and `anchor_id`/`vnode_proof` for individual vnode registration; validates VNodeProof signatures
 - `GET /tracker/policy` — Return vnode policy (`max_vnodes_per_anchor`, `min_anchor_ratio`)
+- `GET /tracker/stable_base` — Return configured stable-base member liveness, degraded status, and emergency threshold; uses `STABLE_BASE_MEMBERS`, `STABLE_BASE_MIN_SIZE`, and `STALE_THRESHOLD_SECONDS`
 - `GET /tracker/nodes` — List all nodes (paginated, optional status/region filter); full data requires admin token
 - `GET /tracker/nodes/seeds` — Get random seed nodes for bootstrapping
 - `GET /tracker/nodes/:node_id` — Get a specific node record
@@ -117,7 +120,7 @@ Node IDs must be 40-character lowercase hexadecimal strings (SHA-1 hash). The re
   - D1: `DB`
   - Rate limiter: `NODE_RATE_LIMITER` (10 req / 60 s per node ID)
   - Secrets Store: `CA_PUBLIC_KEY_BASE64` (Ed25519 CA public key, base64url), `ADMIN_SECRET` (shared admin token)
-  - Vars: `MAX_NODES`, `STALE_THRESHOLD_SECONDS`, `MAX_VNODES_PER_ANCHOR`, `MIN_ANCHOR_RATIO`, `SERVE_SPA_FROM_WORKER`
+  - Vars: `MAX_NODES`, `STALE_THRESHOLD_SECONDS`, `MAX_VNODES_PER_ANCHOR`, `MIN_ANCHOR_RATIO`, `SERVE_SPA_FROM_WORKER`, `STABLE_BASE_MEMBERS`, `STABLE_BASE_MIN_SIZE`
 - The web app (`apps/web/dist/`) is served as static assets via Cloudflare Workers Assets.
 - Apply migrations with `pnpm run migrate:local` (local D1) or `pnpm run migrate:remote` (production D1).
 

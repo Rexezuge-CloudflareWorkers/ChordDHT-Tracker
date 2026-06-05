@@ -14,6 +14,7 @@ import {
   RegionsGetRoute,
   GeoGetRoute,
   PolicyGetRoute,
+  StableBaseGetRoute,
 } from '@/endpoints';
 import { getServeSpaFromWorker } from '@/db';
 import { SPA_HTML } from '@/generated/spa-shell';
@@ -38,6 +39,7 @@ class ChordDHTTrackerWorker {
     app.get('/tracker/regions', (c) => new RegionsGetRoute().handle(c));
     app.get('/tracker/geo', (c) => new GeoGetRoute().handle(c));
     app.get('/tracker/policy', (c) => new PolicyGetRoute().handle(c));
+    app.get('/tracker/stable_base', (c) => new StableBaseGetRoute().handle(c));
 
     app.get('*', (c) => {
       if (!getServeSpaFromWorker(c.env)) {
