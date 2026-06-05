@@ -18,8 +18,12 @@ export function LoginModal({ onSuccess, onClose }: Props) {
     const ok = await verifyAdmin(password);
     setLoading(false);
     if (ok) {
-      sessionStorage.setItem('adminToken', password);
-      onSuccess(password);
+      const tokenBytes = new Uint8Array(32);
+      crypto.getRandomValues(tokenBytes);
+      const token = Array.from(tokenBytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      sessionStorage.setItem('adminToken', token);
+      setPassword('');
+      onSuccess(token);
     } else {
       setError('Invalid password');
       setPassword('');
