@@ -5,6 +5,8 @@ export type { VNodeEntry };
 export type D1Queryable = Pick<D1Database, 'prepare' | 'batch'>;
 
 const encoder = new TextEncoder();
+const DEFAULT_MAX_VNODES_PER_ANCHOR = 8;
+const DEFAULT_MIN_ANCHOR_RATIO = 0.3;
 
 // Parse JSON TEXT columns that are stored as serialized strings in D1.
 export function parseNodeJsonColumns(node: TrackerNodeRecord): TrackerNodeRecord {
@@ -53,6 +55,16 @@ export function getMaxNodes(env: Env): number {
 
 export function getStaleThresholdSecs(env: Env): number {
   return parseInt(env.STALE_THRESHOLD_SECONDS, 10);
+}
+
+export function getMaxVNodesPerAnchor(env: Env): number {
+  const value = parseInt(env.MAX_VNODES_PER_ANCHOR, 10);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_MAX_VNODES_PER_ANCHOR;
+}
+
+export function getMinAnchorRatio(env: Env): number {
+  const value = Number.parseFloat(env.MIN_ANCHOR_RATIO);
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : DEFAULT_MIN_ANCHOR_RATIO;
 }
 
 export async function getStartedAt(db: D1Queryable, now: string): Promise<string> {
