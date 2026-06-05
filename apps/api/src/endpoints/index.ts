@@ -12,3 +12,4 @@ export { AdminVerifyGetRoute } from './tracker/admin/verify/GET';
 export { RegionsGetRoute } from './tracker/regions/GET';
 export { GeoGetRoute } from './tracker/geo/GET';
 export { PolicyGetRoute } from './tracker/policy/GET';
+export { StableBaseGetRoute } from './tracker/stable_base/GET';

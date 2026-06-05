@@ -1,4 +1,4 @@
-import { importEd25519PublicKey } from '@/auth';
+import { importEd25519PublicKey, normalizeURI } from '@/auth';
 import type { TrackerNodeRecord, VNodeProof, VNodeEntry } from '@/types';
 export type { VNodeEntry };
 
@@ -7,6 +7,7 @@ export type D1Queryable = Pick<D1Database, 'prepare' | 'batch'>;
 const encoder = new TextEncoder();
 const DEFAULT_MAX_VNODES_PER_ANCHOR = 8;
 const DEFAULT_MIN_ANCHOR_RATIO = 0.3;
+const DEFAULT_STABLE_BASE_MIN_SIZE = 6;
 
 // Parse JSON TEXT columns that are stored as serialized strings in D1.
 export function parseNodeJsonColumns(node: TrackerNodeRecord): TrackerNodeRecord {
@@ -67,6 +68,19 @@ export function getMinAnchorRatio(env: Env): number {
   return Number.isFinite(value) && value >= 0 && value <= 1 ? value : DEFAULT_MIN_ANCHOR_RATIO;
 }
 
+export function getStableBaseMemberURIs(env: Env): string[] {
+  return (env.STABLE_BASE_MEMBERS ?? '')
+    .split(',')
+    .map((member) => member.trim())
+    .filter((member) => member.length > 0)
+    .map((member) => normalizeURI(member));
+}
+
+export function getStableBaseMinSize(env: Env): number {
+  const value = parseInt(env.STABLE_BASE_MIN_SIZE, 10);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_STABLE_BASE_MIN_SIZE;
+}
+
 export async function getStartedAt(db: D1Queryable, now: string): Promise<string> {
   await db.prepare("INSERT OR IGNORE INTO tracker_meta (key, value) VALUES ('started_at', ?)").bind(now).run();
   const row = await db.prepare("SELECT value FROM tracker_meta WHERE key = 'started_at'").first<{ value: string }>();
@@ -82,10 +96,7 @@ export async function evictOverLimit(db: D1Queryable, maxNodes: number): Promise
   const count = countResult?.count ?? 0;
   if (count <= maxNodes) return;
   const excess = count - maxNodes;
-  await db
-    .prepare('DELETE FROM nodes WHERE node_id IN (SELECT node_id FROM nodes ORDER BY last_seen ASC LIMIT ?)')
-    .bind(excess)
-    .run();
+  await db.prepare('DELETE FROM nodes WHERE node_id IN (SELECT node_id FROM nodes ORDER BY last_seen ASC LIMIT ?)').bind(excess).run();
 }
 
 // ---------- v4.0 vnode helpers ----------
@@ -103,7 +114,9 @@ function base64StdDecode(s: string): ArrayBuffer {
 export async function deriveVNodeID(anchorID: string, index: number): Promise<string> {
   const input = `chord-vnode-v4\n${anchorID}\n${index}`;
   const hashBuf = await crypto.subtle.digest('SHA-1', encoder.encode(input));
-  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(hashBuf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 // verifyVNodeProof verifies a VNodeProof against the anchor's Ed25519 public key.
@@ -134,15 +147,19 @@ export async function verifyVNodeProof(proof: VNodeProof, anchorPubBase64Url: st
 }
 
 // upsertVNode inserts or updates a vnode record in the vnodes table.
-export async function upsertVNode(db: D1Queryable, entry: {
-  vnode_id: string;
-  anchor_id: string;
-  vnode_index: number;
-  proof_json: string;
-  now: number;
-}): Promise<void> {
-  await db.prepare(
-    `INSERT INTO vnodes (vnode_id, anchor_id, vnode_index, proof_json, status, last_seen, joined_at)
+export async function upsertVNode(
+  db: D1Queryable,
+  entry: {
+    vnode_id: string;
+    anchor_id: string;
+    vnode_index: number;
+    proof_json: string;
+    now: number;
+  },
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO vnodes (vnode_id, anchor_id, vnode_index, proof_json, status, last_seen, joined_at)
      VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?)
      ON CONFLICT(vnode_id) DO UPDATE SET
        anchor_id = excluded.anchor_id,
@@ -150,7 +167,9 @@ export async function upsertVNode(db: D1Queryable, entry: {
        proof_json = excluded.proof_json,
        status = 'ACTIVE',
        last_seen = excluded.last_seen`,
-  ).bind(entry.vnode_id, entry.anchor_id, entry.vnode_index, entry.proof_json, entry.now, entry.now).run();
+    )
+    .bind(entry.vnode_id, entry.anchor_id, entry.vnode_index, entry.proof_json, entry.now, entry.now)
+    .run();
 }
 
 // deleteVNodesByAnchor removes all vnode records for the given anchor.
@@ -160,10 +179,11 @@ export async function deleteVNodesByAnchor(db: D1Queryable, anchorID: string): P
 
 // getVNodesByAnchor returns all registered vnodes for the given anchor.
 export async function getVNodesByAnchor(db: D1Queryable, anchorID: string): Promise<VNodeEntry[]> {
-  const { results } = await db.prepare(
-    'SELECT vnode_id, vnode_index, status FROM vnodes WHERE anchor_id = ? ORDER BY vnode_index',
-  ).bind(anchorID).all<{ vnode_id: string; vnode_index: number; status: string }>();
-  return results.map(r => ({ vnode_id: r.vnode_id, index: r.vnode_index, status: r.status }));
+  const { results } = await db
+    .prepare('SELECT vnode_id, vnode_index, status FROM vnodes WHERE anchor_id = ? ORDER BY vnode_index')
+    .bind(anchorID)
+    .all<{ vnode_id: string; vnode_index: number; status: string }>();
+  return results.map((r) => ({ vnode_id: r.vnode_id, index: r.vnode_index, status: r.status }));
 }
 
 interface LogicalVNodeRow {
@@ -269,30 +289,34 @@ export async function getLogicalVNodesByAnchors(db: D1Queryable, anchorIDs: stri
   for (let i = 0; i < anchorIDs.length; i += chunkSize) {
     const chunk = anchorIDs.slice(i, i + chunkSize);
     const placeholders = chunk.map(() => '?').join(', ');
-    const { results } = await db.prepare(
-      `${logicalVNodeSelect}
+    const { results } = await db
+      .prepare(
+        `${logicalVNodeSelect}
        WHERE v.anchor_id IN (${placeholders})
        ORDER BY v.last_seen DESC`,
-    ).bind(...chunk).all<LogicalVNodeRow>();
+      )
+      .bind(...chunk)
+      .all<LogicalVNodeRow>();
     out.push(...results.map(logicalVNodeFromRow));
   }
   return out;
 }
 
 export async function getLogicalVNodeByID(db: D1Queryable, vnodeID: string): Promise<TrackerNodeRecord | null> {
-  const row = await db.prepare(
-    `${logicalVNodeSelect}
+  const row = await db
+    .prepare(
+      `${logicalVNodeSelect}
      WHERE v.vnode_id = ?`,
-  ).bind(vnodeID).first<LogicalVNodeRow>();
+    )
+    .bind(vnodeID)
+    .first<LogicalVNodeRow>();
   return row ? logicalVNodeFromRow(row) : null;
 }
 
 // checkVNodeIDCollision returns true if the given vnode_id is already registered.
 export async function checkVNodeIDCollision(db: D1Queryable, vnodeID: string, anchorID: string): Promise<boolean> {
   // Collides if another anchor owns this vnode_id or if it matches an existing anchor node_id.
-  const vnodeRow = await db.prepare(
-    'SELECT vnode_id FROM vnodes WHERE vnode_id = ? AND anchor_id != ?',
-  ).bind(vnodeID, anchorID).first();
+  const vnodeRow = await db.prepare('SELECT vnode_id FROM vnodes WHERE vnode_id = ? AND anchor_id != ?').bind(vnodeID, anchorID).first();
   if (vnodeRow) return true;
   const nodeRow = await db.prepare('SELECT node_id FROM nodes WHERE node_id = ?').bind(vnodeID).first();
   return !!nodeRow;
