@@ -2,7 +2,7 @@
 
 A Cloudflare Worker that acts as the centralized bootstrap and health-monitoring component for a [Chord DHT](https://pdos.csail.mit.edu/papers/ton:chord/paper-ton.pdf) learning system. Chord nodes are fully peer-to-peer and do not depend on this Tracker for routing — the Tracker only provides seed discovery, global statistics, and optional certificate-based identity verification.
 
-Now at **v4.0** with virtual node (VNode) support: the tracker stores vnode records, validates VNodeProof signatures, and exposes a `GET /tracker/policy` endpoint. The SPA dashboard shows per-anchor vnode counts.
+Now at **v5.0** with stable-base monitoring for the Zave-corrected Chord protocol. The Tracker still supports v4.0 virtual nodes (VNodes), validates VNodeProof signatures, exposes `GET /tracker/policy`, and now adds `GET /tracker/stable_base` for configured physical-anchor liveness.
 
 > **Learning system** — designed for studying the Chord protocol. Not intended for production use.
 
@@ -27,6 +27,7 @@ Now at **v4.0** with virtual node (VNode) support: the tracker stores vnode reco
           │  GET  /tracker/health     liveness   │
           │  GET  /tracker/admin/verify  admin   │
           │  GET  /tracker/policy    vnode policy│
+          │  GET  /tracker/stable_base stable base│
           └──────────────────────────────────────┘
                     ▲ optional bootstrap only
         ┌───────────┼───────────────────────────┐
@@ -35,7 +36,7 @@ Now at **v4.0** with virtual node (VNode) support: the tracker stores vnode reco
    │ Node A  │ │ Node B  │  · · ·        │ Node N   │
    └─────────┘ └─────────┘               └──────────┘
         └────────────── P2P HTTP ─────────────────┘
-          find_successor / notify / stabilize / …
+          find_successor / rectify / stabilize / …
 ```
 
 The Tracker stores a registry of known nodes and serves random seed lists for new nodes to bootstrap. Once a node has joined the ring, all routing happens peer-to-peer; the Tracker going offline has zero effect on an established ring.
@@ -45,7 +46,8 @@ The Tracker stores a registry of known nodes and serves random seed lists for ne
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | ID space | `m = 160` | SHA-1, matches the original Chord paper |
-| Successor list length | `r = 5` (v3.0) | Tolerates up to 4 consecutive node failures |
+| Successor list length | `r = 5` (v3.0+) | Tolerates up to 4 consecutive node failures |
+| Stable base | `r + 1` physical anchors (v5.0) | VNodes do not count toward this minimum |
 | Maintenance interval | 15 s active / 60 s quiet | Adaptive per topology activity |
 | Max routing hops | 161 (`m + 1`) | Hard limit per `find_successor` iteration |
 | Expected routing cost | O(log N) hops | Guaranteed by finger table |
@@ -85,6 +87,7 @@ All requests and responses use `Content-Type: application/json`. Node IDs are 40
 | `GET` | `/tracker/regions` | List known regions and node counts (v3.0); requires admin token |
 | `GET` | `/tracker/admin/verify` | Verify admin token validity |
 | `GET` | `/tracker/policy` | Return vnode policy limits |
+| `GET` | `/tracker/stable_base` | Return configured stable-base member liveness and degraded/emergency status |
 
 `GET /tracker/nodes` and `GET /tracker/nodes/:node_id` return all fields when the request includes `Authorization: Bearer <ADMIN_SECRET>`; unauthenticated requests receive only `node_id` with all other fields set to `null`.
 
@@ -183,6 +186,32 @@ All fields are optional; omitted fields leave the stored value unchanged. `maint
 - `avg_cache_hit_rate` — mean `cache_hits / (cache_hits + cache_misses)` across nodes that reported both values; `null` if no data.
 
 Nodes not seen within `STALE_THRESHOLD_SECONDS` (default 180 s) are counted as `stale_nodes`. The Tracker never probes nodes actively; it relies entirely on heartbeat reports.
+
+**Stable base — `GET /tracker/stable_base`**
+```json
+{
+  "stable_base_min_size": 6,
+  "configured_count": 6,
+  "live_count": 6,
+  "degraded": false,
+  "emergency": false,
+  "emergency_threshold": 4,
+  "stale_threshold_seconds": 180,
+  "checked_at": "2026-06-05T12:00:00Z",
+  "members": [
+    {
+      "node_id": "<40-hex>",
+      "uri": "https://anchor-a.example.com",
+      "registered": true,
+      "status": "ACTIVE",
+      "last_seen": "2026-06-05T11:59:30Z",
+      "live": true
+    }
+  ]
+}
+```
+
+Stable-base member URIs come from `STABLE_BASE_MEMBERS`. Liveness is computed on demand from tracker records: a member is live only when it is registered, reports `ACTIVE`, and has `last_seen` within `STALE_THRESHOLD_SECONDS`.
 
 **CRL — `GET /tracker/crl`**
 ```json
@@ -314,6 +343,7 @@ apps/
         tracker/crl/POST.ts
         tracker/regions/GET.ts
         tracker/admin/verify/GET.ts
+        tracker/stable_base/GET.ts
       generated/
         spa-shell.ts           Auto-generated SPA shell stub (postinstall)
       db.ts                    D1 access helpers, config reads, CA key import/cache
@@ -369,6 +399,8 @@ Copy `apps/api/wrangler.template.jsonc` to `wrangler.jsonc` and fill in your D1 
 | `MAX_VNODES_PER_ANCHOR` | `8` | Maximum inline vnode records accepted per anchor registration; reported by `GET /tracker/policy` |
 | `MIN_ANCHOR_RATIO` | `0.3` | Minimum physical anchor-node ratio reported by `GET /tracker/policy` |
 | `SERVE_SPA_FROM_WORKER` | `false` | Set to `true` to serve the SPA from the Worker instead of Workers Assets |
+| `STABLE_BASE_MEMBERS` | *(empty)* | Comma-separated stable-base physical anchor HTTPS URIs for `GET /tracker/stable_base` |
+| `STABLE_BASE_MIN_SIZE` | `6` | Minimum live stable-base anchor count; default matches `r=5` plus one |
 
 **Secrets Store bindings (configured via Cloudflare dashboard or `wrangler secrets-store`):**
 
@@ -388,13 +420,17 @@ This Tracker supports nodes that implement the Chord protocol as described in [S
 | `GET` | `/chord/ping` | Liveness probe (5 s timeout, responds even when ISOLATED) |
 | `POST` | `/chord/find_successor` | Iterative successor lookup (returns `found`/`next_hop`) |
 | `GET` | `/chord/predecessor` | Returns current predecessor or `null` |
-| `POST` | `/chord/notify` | Stabilize: "I might be your predecessor" |
+| `POST` | `/chord/rectify` | v5 predecessor correction with current-predecessor liveness check |
+| `POST` | `/chord/notify` | Backwards-compatible alias for `/chord/rectify` when enabled |
 | `GET` | `/chord/successor_list` | Returns up to `r = 5` successor entries by default |
 | `POST` | `/chord/join` | Bootstrap entry point; internally calls `find_successor` |
 | `POST` | `/chord/leave` | Graceful leave notification to a neighbor |
 | `GET` | `/chord/finger_table` | Full 160-entry finger table (debug) |
+| `GET` | `/chord/invariant` | v5 successor-list invariant report (debug) |
 
 `find_successor` uses **iterative** (not recursive) mode: a node returns `next_hop` to the caller, which drives the hop loop itself. HTTP call depth is always 1, not O(log N).
+
+v5.0 nodes extend `GET /chord/state` with `successor_list_valid`, `last_invariant_check`, `is_stable_base_member`, and `snapshot_timestamp`. Stabilize uses this state snapshot to avoid racing separate predecessor and successor-list RPCs.
 
 ## Learning Extensions
 
