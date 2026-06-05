@@ -1,8 +1,6 @@
 import { IBaseRoute } from '@/endpoints/IBaseRoute';
 import type { RouteContext } from '@/endpoints/IBaseRoute';
-
-const DEFAULT_MAX_VNODES_PER_ANCHOR = 8;
-const DEFAULT_MIN_ANCHOR_RATIO = 0.3;
+import { getMaxVNodesPerAnchor, getMinAnchorRatio } from '@/db';
 
 class PolicyGetRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
@@ -10,8 +8,8 @@ class PolicyGetRoute extends IBaseRoute {
       return c.json({ error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed', detail: {} } }, 405);
     }
     return c.json({
-      max_vnodes_per_anchor: DEFAULT_MAX_VNODES_PER_ANCHOR,
-      min_anchor_ratio: DEFAULT_MIN_ANCHOR_RATIO,
+      max_vnodes_per_anchor: getMaxVNodesPerAnchor(c.env),
+      min_anchor_ratio: getMinAnchorRatio(c.env),
     });
   }
 }

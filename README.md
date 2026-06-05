@@ -84,6 +84,7 @@ All requests and responses use `Content-Type: application/json`. Node IDs are 40
 | `POST` | `/tracker/crl` | Upload a new CA-signed CRL (v2.0) |
 | `GET` | `/tracker/regions` | List known regions and node counts (v3.0); requires admin token |
 | `GET` | `/tracker/admin/verify` | Verify admin token validity |
+| `GET` | `/tracker/policy` | Return vnode policy limits |
 
 `GET /tracker/nodes` and `GET /tracker/nodes/:node_id` return all fields when the request includes `Authorization: Bearer <ADMIN_SECRET>`; unauthenticated requests receive only `node_id` with all other fields set to `null`.
 
@@ -365,6 +366,8 @@ Copy `apps/api/wrangler.template.jsonc` to `wrangler.jsonc` and fill in your D1 
 |-----|---------|-------------|
 | `MAX_NODES` | `1000` | Maximum nodes stored; evicts oldest by `last_seen` when exceeded |
 | `STALE_THRESHOLD_SECONDS` | `180` | Seconds without a heartbeat before a node is counted as stale |
+| `MAX_VNODES_PER_ANCHOR` | `8` | Maximum inline vnode records accepted per anchor registration; reported by `GET /tracker/policy` |
+| `MIN_ANCHOR_RATIO` | `0.3` | Minimum physical anchor-node ratio reported by `GET /tracker/policy` |
 | `SERVE_SPA_FROM_WORKER` | `false` | Set to `true` to serve the SPA from the Worker instead of Workers Assets |
 
 **Secrets Store bindings (configured via Cloudflare dashboard or `wrangler secrets-store`):**

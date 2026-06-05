@@ -1,12 +1,11 @@
 import { IBaseRoute } from '@/endpoints/IBaseRoute';
 import type { RouteContext } from '@/endpoints/IBaseRoute';
 import { errorResponse } from '@/errors';
-import { getMaxNodes, evictOverLimit, getCAPublicKey, upsertVNode, checkVNodeIDCollision, updateAnchorVnodeCount, verifyVNodeProof } from '@/db';
+import { getMaxNodes, getMaxVNodesPerAnchor, evictOverLimit, getCAPublicKey, upsertVNode, checkVNodeIDCollision, updateAnchorVnodeCount, verifyVNodeProof } from '@/db';
 import { verifyCertificate } from '@/auth';
 import type { Certificate, VNodeProof } from '@/types';
 
 const NODE_ID_REGEX = /^[0-9a-f]{40}$/;
-const MAX_VNODES_PER_ANCHOR = 8;
 
 class NodesPostRoute extends IBaseRoute {
   protected async handleRequest(c: RouteContext): Promise<Response> {
@@ -111,7 +110,7 @@ class NodesPostRoute extends IBaseRoute {
       const anchorCertPubKey = anchorPubKeyBase64url;
       let validCount = 0;
       if (anchorCertPubKey && caKey) {
-        const limited = vnodes.slice(0, MAX_VNODES_PER_ANCHOR);
+        const limited = vnodes.slice(0, getMaxVNodesPerAnchor(c.env));
         for (const entry of limited) {
           const ve = entry as { vnode_id?: unknown; index?: unknown; proof?: unknown };
           if (typeof ve.vnode_id !== 'string' || !NODE_ID_REGEX.test(ve.vnode_id)) continue;

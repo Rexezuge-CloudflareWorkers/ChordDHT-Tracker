@@ -117,7 +117,7 @@ Node IDs must be 40-character lowercase hexadecimal strings (SHA-1 hash). The re
   - D1: `DB`
   - Rate limiter: `NODE_RATE_LIMITER` (10 req / 60 s per node ID)
   - Secrets Store: `CA_PUBLIC_KEY_BASE64` (Ed25519 CA public key, base64url), `ADMIN_SECRET` (shared admin token)
-  - Vars: `MAX_NODES`, `STALE_THRESHOLD_SECONDS`, `SERVE_SPA_FROM_WORKER`
+  - Vars: `MAX_NODES`, `STALE_THRESHOLD_SECONDS`, `MAX_VNODES_PER_ANCHOR`, `MIN_ANCHOR_RATIO`, `SERVE_SPA_FROM_WORKER`
 - The web app (`apps/web/dist/`) is served as static assets via Cloudflare Workers Assets.
 - Apply migrations with `pnpm run migrate:local` (local D1) or `pnpm run migrate:remote` (production D1).
 
