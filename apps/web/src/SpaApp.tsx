@@ -17,9 +17,7 @@ export default function SpaApp() {
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [adminToken, setAdminToken] = useState<string | null>(
-    () => sessionStorage.getItem('adminToken'),
-  );
+  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [regionFilter, setRegionFilter] = useState<string>('');
   const [nodeTypeFilter, setNodeTypeFilter] = useState<NodeTypeFilter>('all');
@@ -115,7 +113,6 @@ export default function SpaApp() {
 
   const handleLogout = () => {
     adminTokenRef.current = null;
-    sessionStorage.removeItem('adminToken');
     setAdminToken(null);
     regionFilterRef.current = '';
     setRegionFilter('');
