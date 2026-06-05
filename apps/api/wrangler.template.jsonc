@@ -63,7 +63,7 @@
     "MAX_NODES": "1000",
     "STALE_THRESHOLD_SECONDS": "180",
     "MAX_VNODES_PER_ANCHOR": "8",
-    "MIN_ANCHOR_RATIO": "0.3",
+    "MIN_ANCHOR_RATIO": "0.20",
     "SERVE_SPA_FROM_WORKER": "false",
   },
 }
