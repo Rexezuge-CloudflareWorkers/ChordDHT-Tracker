@@ -21,7 +21,13 @@ export function formatUptime(seconds: number): string {
   const wholeSeconds = Math.floor(seconds);
   if (wholeSeconds < 60) return `${wholeSeconds}s`;
   if (wholeSeconds < 3600) return `${Math.floor(wholeSeconds / 60)}m ${wholeSeconds % 60}s`;
-  const h = Math.floor(wholeSeconds / 3600);
+  if (wholeSeconds < 86400) {
+    const h = Math.floor(wholeSeconds / 3600);
+    const m = Math.floor((wholeSeconds % 3600) / 60);
+    return `${h}h ${m}m`;
+  }
+  const d = Math.floor(wholeSeconds / 86400);
+  const h = Math.floor((wholeSeconds % 86400) / 3600);
   const m = Math.floor((wholeSeconds % 3600) / 60);
-  return `${h}h ${m}m`;
+  return `${d}d ${h}h ${m}m`;
 }
