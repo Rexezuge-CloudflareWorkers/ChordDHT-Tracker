@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.13.3"
+    "hono": "^4.13.4"
   },
   "devDependencies": {
     "typescript": "^6.0.3"
