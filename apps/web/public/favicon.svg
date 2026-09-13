@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
   <!-- Chord ring -->
-  <circle cx="16" cy="16" r="11" fill="#101319" stroke="#6366f1" stroke-width="1.5"/>
+  <circle cx="16" cy="16" r="11" fill="#EEF2FF" stroke="#6366f1" stroke-width="1.5"/>
   <!-- Finger-table chord (curved lookup across the ring) -->
   <path d="M5.5 12.6 Q16 16 22.5 24.9" stroke="#a78bfa" stroke-width="1.2" stroke-linecap="round"/>
   <!-- Anchor nodes -->
-  <circle cx="26.5" cy="12.6" r="1.8" fill="#6366f1" stroke="#101319" stroke-width="1"/>
-  <circle cx="22.5" cy="24.9" r="1.8" fill="#6366f1" stroke="#101319" stroke-width="1"/>
-  <circle cx="9.5" cy="24.9" r="1.8" fill="#6366f1" stroke="#101319" stroke-width="1"/>
-  <circle cx="5.5" cy="12.6" r="1.8" fill="#6366f1" stroke="#101319" stroke-width="1"/>
+  <circle cx="26.5" cy="12.6" r="1.8" fill="#6366f1" stroke="#FFFFFF" stroke-width="1"/>
+  <circle cx="22.5" cy="24.9" r="1.8" fill="#6366f1" stroke="#FFFFFF" stroke-width="1"/>
+  <circle cx="9.5" cy="24.9" r="1.8" fill="#6366f1" stroke="#FFFFFF" stroke-width="1"/>
+  <circle cx="5.5" cy="12.6" r="1.8" fill="#6366f1" stroke="#FFFFFF" stroke-width="1"/>
   <!-- ACTIVE node at 0x0000 (top of ring) -->
-  <circle cx="16" cy="5" r="2.2" fill="#22c55e" stroke="#101319" stroke-width="1"/>
+  <circle cx="16" cy="5" r="2.2" fill="#22c55e" stroke="#FFFFFF" stroke-width="1"/>
 </svg>
