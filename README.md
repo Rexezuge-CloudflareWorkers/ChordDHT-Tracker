@@ -174,7 +174,7 @@ All fields are optional; omitted fields leave the stored value unchanged. `maint
     "avg_cache_hit_rate": 0.76
   },
   "tracker_uptime_seconds": 7200,
-  "stale_threshold_seconds": 180,
+  "stale_threshold_seconds": 600,
   "stats_generated_at": "2026-05-30T12:00:00Z"
 }
 ```
@@ -185,7 +185,7 @@ All fields are optional; omitted fields leave the stored value unchanged. `maint
 - `active_maintenance_nodes` — nodes currently reporting `maintenance_mode = "ACTIVE_MAINTENANCE"`.
 - `avg_cache_hit_rate` — mean `cache_hits / (cache_hits + cache_misses)` across nodes that reported both values; `null` if no data.
 
-Nodes not seen within `STALE_THRESHOLD_SECONDS` (default 180 s) are counted as `stale_nodes`. The Tracker never probes nodes actively; it relies entirely on heartbeat reports.
+Nodes not seen within `STALE_THRESHOLD_SECONDS` (default 600 s) are counted as `stale_nodes`. The Tracker never probes nodes actively; it relies entirely on heartbeat reports. The default covers the slowest client heartbeat interval (quiet mode: 300 s) with margin for ticker granularity, clock skew, and one missed heartbeat.
 
 **Stable base — `GET /tracker/stable_base`**
 ```json
@@ -196,7 +196,7 @@ Nodes not seen within `STALE_THRESHOLD_SECONDS` (default 180 s) are counted as `
   "degraded": false,
   "emergency": false,
   "emergency_threshold": 4,
-  "stale_threshold_seconds": 180,
+  "stale_threshold_seconds": 600,
   "checked_at": "2026-06-05T12:00:00Z",
   "members": [
     {
@@ -395,7 +395,7 @@ Copy `apps/api/wrangler.template.jsonc` to `wrangler.jsonc` and fill in your D1 
 | Var | Default | Description |
 |-----|---------|-------------|
 | `MAX_NODES` | `1000` | Maximum nodes stored; evicts oldest by `last_seen` when exceeded |
-| `STALE_THRESHOLD_SECONDS` | `180` | Seconds without a heartbeat before a node is counted as stale |
+| `STALE_THRESHOLD_SECONDS` | `600` | Seconds without a heartbeat before a node is counted as stale; must exceed the slowest client heartbeat interval (quiet mode: 300 s) |
 | `MAX_VNODES_PER_ANCHOR` | `8` | Maximum inline vnode records accepted per anchor registration; reported by `GET /tracker/policy` |
 | `MIN_ANCHOR_RATIO` | `0.3` | Minimum physical anchor-node ratio reported by `GET /tracker/policy` |
 | `SERVE_SPA_FROM_WORKER` | `false` | Set to `true` to serve the SPA from the Worker instead of Workers Assets |
