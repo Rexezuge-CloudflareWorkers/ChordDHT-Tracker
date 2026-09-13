@@ -251,6 +251,31 @@ describe('GET /tracker/nodes/seeds', () => {
     expect(body.seeds).toHaveLength(0);
     expect(body.total_known).toBe(0);
   });
+
+  it('uses a stale cutoff covering the quiet-mode heartbeat interval', async () => {
+    const seedsStmt = createStmt({ allResults: [] });
+    const countStmt = createStmt({ firstResult: { count: 0 } });
+    const db = createD1(seedsStmt, countStmt);
+
+    const before = Date.now();
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request('http://localhost/tracker/nodes/seeds'),
+      createEnv(db),
+      {} as ExecutionContext,
+    );
+    const after = Date.now();
+
+    expect(res.status).toBe(200);
+    const bindCalls = (seedsStmt.bind as ReturnType<typeof vi.fn>).mock.calls as unknown[][];
+    expect(bindCalls).toHaveLength(1);
+    const cutoff = new Date(bindCalls[0][0] as string).getTime();
+    // Default threshold is 600s: cutoff must be older than the 300s quiet
+    // interval ago, within the request window.
+    expect(cutoff).toBeLessThanOrEqual(before - 300_000);
+    expect(cutoff).toBeGreaterThanOrEqual(after - 600_000 - 5_000);
+    expect(cutoff).toBeLessThanOrEqual(before - 600_000 + 5_000);
+  });
 });
 
 // ─── GET /tracker/nodes ──────────────────────────────────────────────────────

@@ -8,6 +8,9 @@ const encoder = new TextEncoder();
 const DEFAULT_MAX_VNODES_PER_ANCHOR = 8;
 const DEFAULT_MIN_ANCHOR_RATIO = 0.3;
 const DEFAULT_STABLE_BASE_MIN_SIZE = 6;
+// Must exceed the slowest client heartbeat interval (quiet mode: 300s) with
+// margin for ticker granularity, clock skew, and one missed heartbeat.
+const DEFAULT_STALE_THRESHOLD_SECS = 600;
 
 // Parse JSON TEXT columns that are stored as serialized strings in D1.
 export function parseNodeJsonColumns(node: TrackerNodeRecord): TrackerNodeRecord {
@@ -55,7 +58,8 @@ export function getMaxNodes(env: Env): number {
 }
 
 export function getStaleThresholdSecs(env: Env): number {
-  return parseInt(env.STALE_THRESHOLD_SECONDS, 10);
+  const value = parseInt(env.STALE_THRESHOLD_SECONDS, 10);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_STALE_THRESHOLD_SECS;
 }
 
 export function getMaxVNodesPerAnchor(env: Env): number {

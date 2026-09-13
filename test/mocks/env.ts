@@ -12,7 +12,7 @@ export function createEnv(db: D1Database, rateLimitSuccess = true, adminSecret: 
   return {
     DB: db,
     MAX_NODES: vars.MAX_NODES ?? '1000',
-    STALE_THRESHOLD_SECONDS: vars.STALE_THRESHOLD_SECONDS ?? '180',
+    STALE_THRESHOLD_SECONDS: vars.STALE_THRESHOLD_SECONDS ?? '600',
     MAX_VNODES_PER_ANCHOR: vars.MAX_VNODES_PER_ANCHOR ?? '8',
     MIN_ANCHOR_RATIO: vars.MIN_ANCHOR_RATIO ?? '0.3',
     SERVE_SPA_FROM_WORKER: vars.SERVE_SPA_FROM_WORKER ?? 'false',
