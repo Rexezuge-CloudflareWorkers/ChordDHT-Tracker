@@ -11,6 +11,19 @@ interface Props {
   isAdmin: boolean;
 }
 
+// Masked renders a masked placeholder for nullish values (NullValue for
+// admins, RedactedValue for guests) and formats present values. Centralizing
+// the branch here keeps row JSX free of nested ternaries.
+function Masked<T>({ isAdmin, value, format }: { isAdmin: boolean; value: T | null | undefined; format: (value: T) => React.ReactNode }): React.ReactNode {
+  if (value === null || value === undefined) {
+    if (isAdmin) {
+      return <NullValue />;
+    }
+    return <RedactedValue />;
+  }
+  return <>{format(value)}</>;
+}
+
 export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdmin }: Props) {
   const [copied, setCopied] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -20,9 +33,8 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
     return () => cancelAnimationFrame(id);
   }, []);
 
-  useEffect(() => {
-    setCopied(false);
-  }, [node.node_id]);
+  // `copied` resets via the parent's key={node.node_id} remount (see SpaApp),
+  // avoiding setState-in-effect.
 
   const copyNodeId = () => {
     void navigator.clipboard.writeText(node.node_id).then(() => {
@@ -32,7 +44,7 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
   };
 
   const color = STATUS_COLORS[node.status ?? 'UNKNOWN'] ?? STATUS_COLORS['UNKNOWN'];
-  const certExpiresAt = node.cert_expires_at != null ? new Date(node.cert_expires_at * 1000) : null;
+  const certExpiresAt = node.cert_expires_at == null ? null : new Date(node.cert_expires_at * 1000);
   const certExpired = certExpiresAt != null && certExpiresAt < new Date();
 
   const cacheTotal = (node.cache_hits ?? 0) + (node.cache_misses ?? 0);
@@ -78,40 +90,48 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
             <SectionLabel>Status &amp; Timing</SectionLabel>
             <div className="space-y-1.5">
               <Row label="Status">
-                {node.status !== null ? (
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-medium"
-                    style={{ backgroundColor: `${color}22`, color }}
-                  >
-                    {node.status}
-                  </span>
-                ) : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked
+                  isAdmin={isAdmin}
+                  value={node.status}
+                  format={(status) => (
+                    <span
+                      className="px-2 py-0.5 rounded-full text-xs font-medium"
+                      style={{ backgroundColor: `${color}22`, color }}
+                    >
+                      {status}
+                    </span>
+                  )}
+                />
               </Row>
               {node.is_vnode && (
                 <Row label="VNode Index">
-                  {node.vnode_index != null ? node.vnode_index : <NullValue />}
+                  {node.vnode_index ?? <NullValue />}
                 </Row>
               )}
               <Row label="Joined">
-                {node.joined_at !== null ? new Date(node.joined_at).toLocaleString() : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked isAdmin={isAdmin} value={node.joined_at} format={(v) => new Date(v).toLocaleString()} />
               </Row>
               <Row label="Last Seen">
-                {node.last_seen !== null ? formatRelativeTime(node.last_seen) : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked isAdmin={isAdmin} value={node.last_seen} format={(v) => formatRelativeTime(v)} />
               </Row>
               <Row label="Reports">
-                {node.report_count !== null ? node.report_count.toLocaleString() : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked isAdmin={isAdmin} value={node.report_count} format={(v) => v.toLocaleString()} />
               </Row>
               <Row label="Maint. Mode">
-                {node.maintenance_mode != null ? (
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-medium"
-                    style={node.maintenance_mode === 'ACTIVE_MAINTENANCE'
-                      ? { backgroundColor: '#f59e0b22', color: '#f59e0b' }
-                      : { backgroundColor: '#6b728022', color: '#9ca3af' }}
-                  >
-                    {node.maintenance_mode === 'ACTIVE_MAINTENANCE' ? 'ACTIVE' : 'QUIET'}
-                  </span>
-                ) : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked
+                  isAdmin={isAdmin}
+                  value={node.maintenance_mode}
+                  format={(mode) => (
+                    <span
+                      className="px-2 py-0.5 rounded-full text-xs font-medium"
+                      style={mode === 'ACTIVE_MAINTENANCE'
+                        ? { backgroundColor: '#f59e0b22', color: '#f59e0b' }
+                        : { backgroundColor: '#6b728022', color: '#9ca3af' }}
+                    >
+                      {mode === 'ACTIVE_MAINTENANCE' ? 'ACTIVE' : 'QUIET'}
+                    </span>
+                  )}
+                />
               </Row>
             </div>
           </div>
@@ -120,14 +140,16 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
             <SectionLabel>Connectivity</SectionLabel>
             <div className="space-y-1.5">
               <Row label="URI">
-                {node.uri !== null
-                  ? <span className="text-xs text-gray-300 break-all">{node.uri}</span>
-                  : <RedactedValue />}
+                {node.uri === null
+                  ? <RedactedValue />
+                  : <span className="text-xs text-gray-300 break-all">{node.uri}</span>}
               </Row>
               <Row label="Region">
-                {node.region != null
-                  ? <span className="text-xs text-gray-300">{node.region}</span>
-                  : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked
+                  isAdmin={isAdmin}
+                  value={node.region}
+                  format={(region) => <span className="text-xs text-gray-300">{region}</span>}
+                />
               </Row>
               {isAdmin && node.is_vnode && node.anchor_id && (
                 <Row label="Anchor">
@@ -156,22 +178,14 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                 </Row>
               )}
               <Row label="Successor List">
-                {node.successor_list_size != null ? (
-                  node.successor_list_capacity != null ? (
-                    `${node.successor_list_size} / ${node.successor_list_capacity}`
-                  ) : (
-                    node.successor_list_size
-                  )
-                ) : isAdmin ? (
-                  <NullValue />
-                ) : (
-                  <RedactedValue />
-                )}
+                <Masked
+                  isAdmin={isAdmin}
+                  value={node.successor_list_size}
+                  format={(size) => (node.successor_list_capacity == null ? size : `${size} / ${node.successor_list_capacity}`)}
+                />
               </Row>
               <Row label="Predecessor List">
-                {node.predecessor_list_size != null
-                  ? node.predecessor_list_size
-                  : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked isAdmin={isAdmin} value={node.predecessor_list_size} format={(size) => size} />
               </Row>
             </div>
           </div>
@@ -196,15 +210,17 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
             <SectionLabel>Performance</SectionLabel>
             <div className="space-y-1.5">
               <Row label="Uptime">
-                {node.uptime_seconds != null ? formatUptime(node.uptime_seconds) : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked isAdmin={isAdmin} value={node.uptime_seconds} format={(v) => formatUptime(v)} />
               </Row>
               <Row label="Finger Coverage">
-                {node.finger_table_coverage != null
-                  ? `${(node.finger_table_coverage * 100).toFixed(1)}%`
-                  : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked
+                  isAdmin={isAdmin}
+                  value={node.finger_table_coverage}
+                  format={(v) => `${(v * 100).toFixed(1)}%`}
+                />
               </Row>
               <Row label="Maintenance Cycles">
-                {node.maintenance_cycles != null ? node.maintenance_cycles : isAdmin ? <NullValue /> : <RedactedValue />}
+                <Masked isAdmin={isAdmin} value={node.maintenance_cycles} format={(v) => v} />
               </Row>
             </div>
           </div>
@@ -226,10 +242,10 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
               <SectionLabel>Certificate</SectionLabel>
               <div className="space-y-1.5">
                 <Row label="Expires">
-                  {certExpiresAt != null ? certExpiresAt.toLocaleString() : isAdmin ? <NullValue /> : <RedactedValue />}
+                  <Masked isAdmin={isAdmin} value={certExpiresAt} format={(v) => v.toLocaleString()} />
                 </Row>
                 <Row label="Status">
-                  {certExpiresAt != null ? (
+                  {certExpiresAt == null ? <RedactedValue /> : (
                     <span
                       className="px-2 py-0.5 rounded-full text-xs font-medium"
                       style={certExpired
@@ -238,7 +254,7 @@ export function NodeDetailPanel({ node, knownNodeIds, onClose, onNavigate, isAdm
                     >
                       {certExpired ? 'EXPIRED' : 'VALID'}
                     </span>
-                  ) : <RedactedValue />}
+                  )}
                 </Row>
               </div>
             </div>

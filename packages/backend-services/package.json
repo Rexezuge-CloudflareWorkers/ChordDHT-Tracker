@@ -1,0 +1,39 @@
+{
+  "name": "@chord-dht-tracker/backend-services",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./auth/*": "./src/auth/*.ts",
+    "./composition": "./src/composition/index.ts",
+    "./composition/*": "./src/composition/*.ts",
+    "./crl": "./src/crl/index.ts",
+    "./crl/*": "./src/crl/*.ts",
+    "./maintenance": "./src/maintenance/index.ts",
+    "./maintenance/*": "./src/maintenance/*.ts",
+    "./node": "./src/node/index.ts",
+    "./node/*": "./src/node/*.ts",
+    "./stable-base": "./src/stable-base/index.ts",
+    "./stable-base/*": "./src/stable-base/*.ts",
+    "./stats": "./src/stats/index.ts",
+    "./stats/*": "./src/stats/*.ts",
+    "./vnode": "./src/vnode/index.ts",
+    "./vnode/*": "./src/vnode/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@chord-dht-tracker/backend-data": "workspace:*",
+    "@chord-dht-tracker/backend-errors": "workspace:*",
+    "@chord-dht-tracker/backend-runtime": "workspace:*",
+    "@chord-dht-tracker/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "typescript": "6.0.3"
+  }
+}

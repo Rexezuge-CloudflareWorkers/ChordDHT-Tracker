@@ -7,7 +7,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.13.7"
+    "@chord-dht-tracker/background": "workspace:*",
+    "@chord-dht-tracker/backend-data": "workspace:*",
+    "@chord-dht-tracker/backend-errors": "workspace:*",
+    "@chord-dht-tracker/backend-runtime": "workspace:*",
+    "@chord-dht-tracker/backend-services": "workspace:*",
+    "@chord-dht-tracker/shared": "workspace:*",
+    "chanfana": "3.4.0",
+    "hono": "^4.13.7",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "typescript": "^6.0.3"

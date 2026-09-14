@@ -21,6 +21,7 @@ export const proxyToApi: PagesFunction<PagesProxyEnv> = async ({ request, env })
     headers.set(FORWARDED_FOR_HEADER, clientIp);
   }
 
+  // eslint-disable-next-line unicorn/prefer-url-href -- href would include the origin and hash; the proxy must forward path + query only.
   const proxyRequest: Request = new Request(originalUrl.toString(), {
     method: request.method,
     headers,

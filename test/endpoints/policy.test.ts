@@ -17,7 +17,7 @@ describe('GET /tracker/policy', () => {
     const body = (await res.json()) as PolicyResponse;
     expect(body).toEqual({
       max_vnodes_per_anchor: 8,
-      min_anchor_ratio: 0.3,
+      min_anchor_ratio: 0.2,
     });
   });
 

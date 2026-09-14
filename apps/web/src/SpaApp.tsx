@@ -1,33 +1,25 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { fetchNodes, fetchRegions, fetchStats } from './api';
-import type { TrackerNodeRecord, StatsResponse } from './types';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useTrackerData } from './hooks/useTrackerData';
+import { TrackerContext } from './contexts/TrackerContext';
+import { computeStaleCutoff, toAdminVisibleNodes, toGuestVisibleNodes, type NodeTypeFilter } from './adapters/nodeAdapter';
 import { StatsPanel } from './components/StatsPanel';
 import { RingVisualization } from './components/RingVisualization';
 import { NodeTable } from './components/NodeTable';
 import { NodeDetailPanel } from './components/NodeDetailPanel';
 import { LoginModal } from './components/LoginModal';
+import { LanguageSelector } from './components/shared/LanguageSelector';
 import { REFRESH_INTERVAL_MS } from './constants';
 
-type NodeTypeFilter = 'all' | 'anchors' | 'vnodes';
-
 export default function SpaApp() {
-  const [nodes, setNodes] = useState<TrackerNodeRecord[]>([]);
-  const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [paused, setPaused] = useState(false);
+  const { t } = useTranslation();
+  const data = useTrackerData();
+  const { nodes, stats, availableRegions, lastRefresh, error, paused, isAdmin } = data;
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
-  const [regionFilter, setRegionFilter] = useState<string>('');
   const [nodeTypeFilter, setNodeTypeFilter] = useState<NodeTypeFilter>('all');
-  const [availableRegions, setAvailableRegions] = useState<Record<string, number>>({});
   const [ringCardHeight, setRingCardHeight] = useState<number | null>(null);
-  const adminTokenRef = useRef(adminToken);
-  const regionFilterRef = useRef(regionFilter);
   const ringCardRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => { regionFilterRef.current = regionFilter; }, [regionFilter]);
 
   useEffect(() => {
     const ringCard = ringCardRef.current;
@@ -35,66 +27,27 @@ export default function SpaApp() {
 
     const updateRingCardHeight = () => {
       const nextHeight = Math.ceil(ringCard.getBoundingClientRect().height);
-      setRingCardHeight(currentHeight => currentHeight === nextHeight ? currentHeight : nextHeight);
+      setRingCardHeight((currentHeight) => (currentHeight === nextHeight ? currentHeight : nextHeight));
     };
 
     updateRingCardHeight();
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateRingCardHeight);
-      return () => window.removeEventListener('resize', updateRingCardHeight);
-    }
-
     const observer = new ResizeObserver(updateRingCardHeight);
     observer.observe(ringCard);
 
     return () => observer.disconnect();
   }, []);
 
-  const isAdmin = adminToken !== null;
-  const visibleNodes = useMemo(() => {
-    if (!isAdmin) return nodes.filter(n => !n.is_vnode);
-    if (nodeTypeFilter === 'anchors') return nodes.filter(n => !n.is_vnode);
-    if (nodeTypeFilter === 'vnodes') return nodes.filter(n => n.is_vnode);
-    return nodes;
-  }, [nodes, nodeTypeFilter, isAdmin]);
-  const accessibleNodes = isAdmin ? nodes : visibleNodes;
-  const selectedNode = accessibleNodes.find(n => n.node_id === selectedNodeId) ?? null;
-  const knownNodeIds = useMemo(() => new Set(accessibleNodes.map(n => n.node_id)), [accessibleNodes]);
-  const staleCutoff = useMemo(
-    () =>
-      stats?.stats_generated_at && stats?.stale_threshold_seconds
-        ? new Date(new Date(stats.stats_generated_at).getTime() - stats.stale_threshold_seconds * 1000)
-        : null,
-    [stats],
+  const visibleNodes = useMemo(
+    () => (isAdmin ? toAdminVisibleNodes(nodes, nodeTypeFilter) : toGuestVisibleNodes(nodes)),
+    [nodes, nodeTypeFilter, isAdmin],
   );
-
-  // refresh reads token from ref so the function reference stays stable,
-  // avoiding interval teardown/restart on every login/logout.
-  const refresh = useCallback(async () => {
-    try {
-      const token = adminTokenRef.current ?? undefined;
-      const region = regionFilterRef.current || undefined;
-      const [nodesRes, statsRes, regionsRes] = await Promise.all([
-        fetchNodes(200, token, region),
-        fetchStats(),
-        adminTokenRef.current ? fetchRegions().catch(() => ({ regions: {} })) : Promise.resolve({ regions: {} }),
-      ]);
-      setNodes(nodesRes.nodes);
-      setStats(statsRes);
-      setAvailableRegions(regionsRes.regions);
-      setLastRefresh(new Date());
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (paused) return;
-    void refresh();
-    const interval = setInterval(() => void refresh(), REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [refresh, paused]);
+  const accessibleNodes = useMemo(
+    () => (isAdmin ? nodes : toGuestVisibleNodes(nodes)),
+    [nodes, isAdmin],
+  );
+  const selectedNode = accessibleNodes.find((n) => n.node_id === selectedNodeId) ?? null;
+  const knownNodeIds = useMemo(() => new Set(accessibleNodes.map((n) => n.node_id)), [accessibleNodes]);
+  const staleCutoff = useMemo(() => computeStaleCutoff(stats), [stats]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -104,151 +57,141 @@ export default function SpaApp() {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
-  const handleLoginSuccess = (token: string) => {
-    adminTokenRef.current = token;
-    setAdminToken(token);
-    setLoginModalOpen(false);
-    void refresh();
-  };
-
   const handleLogout = () => {
-    adminTokenRef.current = null;
-    setAdminToken(null);
-    regionFilterRef.current = '';
-    setRegionFilter('');
+    data.logout();
     setNodeTypeFilter('all');
-    setAvailableRegions({});
     setSelectedNodeId(null);
-    setNodes(prev => prev.filter(n => !n.is_vnode));
-    void refresh();
   };
 
-  const nodePanelStyle = ringCardHeight === null
-    ? undefined
-    : ({ '--ring-card-height': `${ringCardHeight}px` } as React.CSSProperties);
+  const nodePanelStyle =
+    ringCardHeight === null ? undefined : ({ '--ring-card-height': `${ringCardHeight}px` } as React.CSSProperties);
 
   return (
-    <div className="min-h-screen" style={{ background: '#101319' }}>
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Chord DHT Tracker</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {lastRefresh ? (
-              <>
-                Last updated {lastRefresh.toLocaleTimeString()} ·{' '}
-                {paused ? (
-                  <span className="text-amber-400">Paused</span>
-                ) : (
-                  `auto-refreshes every ${REFRESH_INTERVAL_MS / 1000}s`
-                )}
-              </>
+    <TrackerContext.Provider value={{ isAdmin, login: data.login, logout: handleLogout }}>
+      <div className="min-h-screen" style={{ background: '#101319' }}>
+        <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-white">{t('app.title')}</h1>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {lastRefresh ? (
+                <>
+                  {t('app.lastUpdated', { time: lastRefresh.toLocaleTimeString() })} ·{' '}
+                  {paused ? (
+                    <span className="text-amber-400">{t('app.paused')}</span>
+                  ) : (
+                    t('app.autoRefresh', { seconds: REFRESH_INTERVAL_MS / 1000 })
+                  )}
+                </>
+              ) : (
+                t('app.loading')
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <LanguageSelector />
+            {isAdmin ? (
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-indigo-400 rounded-md border border-gray-700 transition-colors cursor-pointer"
+              >
+                {t('app.adminLogout')}
+              </button>
             ) : (
-              'Loading…'
+              <button
+                onClick={() => setLoginModalOpen(true)}
+                className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-md border border-gray-700 transition-colors cursor-pointer"
+              >
+                {t('app.login')}
+              </button>
             )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {isAdmin ? (
             <button
-              onClick={handleLogout}
-              className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-indigo-400 rounded-md border border-gray-700 transition-colors cursor-pointer"
+              onClick={() => data.setPaused(!paused)}
+              className={
+                paused
+                  ? 'px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-md border border-indigo-500 transition-colors cursor-pointer'
+                  : 'px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md border border-gray-700 transition-colors cursor-pointer'
+              }
             >
-              Admin · Logout
+              {t(paused ? 'app.resume' : 'app.pause')}
             </button>
-          ) : (
-            <button
-              onClick={() => setLoginModalOpen(true)}
-              className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-md border border-gray-700 transition-colors cursor-pointer"
-            >
-              Login
-            </button>
+          </div>
+        </header>
+
+        <main className="px-6 py-6 space-y-6">
+          {error && (
+            <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-md text-sm">{error}</div>
           )}
-          <button
-            onClick={() => setPaused(p => !p)}
-            className={
-              paused
-                ? 'px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-md border border-indigo-500 transition-colors cursor-pointer'
-                : 'px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md border border-gray-700 transition-colors cursor-pointer'
-            }
-          >
-            {paused ? 'Resume' : 'Pause'}
-          </button>
-        </div>
-      </header>
 
-      <main className="px-6 py-6 space-y-6">
-        {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-md text-sm">
-            {error}
-          </div>
-        )}
+          <StatsPanel stats={stats} />
 
-        <StatsPanel stats={stats} />
-
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
-          <div ref={ringCardRef} className="bg-gray-900 border border-gray-800 rounded-lg p-4 self-start w-full">
-            <h2 className="text-sm font-medium text-gray-400 mb-4">Ring Topology</h2>
-            <RingVisualization
-              nodes={accessibleNodes}
-              selectedNodeId={selectedNodeId}
-              onNodeSelect={setSelectedNodeId}
-              isAdmin={isAdmin}
-              staleCutoff={staleCutoff}
-            />
-          </div>
-          <div
-            className="node-list-panel bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col overflow-hidden min-h-0"
-            style={nodePanelStyle}
-          >
-            <div className="flex flex-wrap items-center justify-between mb-2 shrink-0 gap-2">
-              <h2 className="text-sm font-medium text-gray-400">
-                Nodes{' '}
-                <span className="text-gray-600">
-                  ({visibleNodes.length}{isAdmin && visibleNodes.length !== nodes.length ? ` / ${nodes.length}` : ''})
-                </span>
-              </h2>
-              {isAdmin && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    aria-label="Filter nodes by type"
-                    value={nodeTypeFilter}
-                    onChange={(e) => setNodeTypeFilter(e.target.value as NodeTypeFilter)}
-                    className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 cursor-pointer"
-                  >
-                    <option value="all">All Nodes</option>
-                    <option value="anchors">Anchor Nodes</option>
-                    <option value="vnodes">Virtual Nodes</option>
-                  </select>
-                  {Object.keys(availableRegions).length > 0 && (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+            <div ref={ringCardRef} className="bg-gray-900 border border-gray-800 rounded-lg p-4 self-start w-full">
+              <h2 className="text-sm font-medium text-gray-400 mb-4">{t('sections.ringTopology')}</h2>
+              <RingVisualization
+                nodes={accessibleNodes}
+                selectedNodeId={selectedNodeId}
+                onNodeSelect={setSelectedNodeId}
+                isAdmin={isAdmin}
+                staleCutoff={staleCutoff}
+              />
+            </div>
+            <div
+              className="node-list-panel bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col overflow-hidden min-h-0"
+              style={nodePanelStyle}
+            >
+              <div className="flex flex-wrap items-center justify-between mb-2 shrink-0 gap-2">
+                <h2 className="text-sm font-medium text-gray-400">
+                  {t('sections.nodes')}{' '}
+                  <span className="text-gray-600">
+                    ({visibleNodes.length}
+                    {isAdmin && visibleNodes.length !== nodes.length && ` / ${nodes.length}`})
+                  </span>
+                </h2>
+                {isAdmin && (
+                  <div className="flex flex-wrap items-center gap-2">
                     <select
-                      aria-label="Filter nodes by region"
-                      value={regionFilter}
-                      onChange={(e) => { setRegionFilter(e.target.value); void refresh(); }}
+                      aria-label={t('filters.filterByType')}
+                      value={nodeTypeFilter}
+                      onChange={(e) => setNodeTypeFilter(e.target.value as NodeTypeFilter)}
                       className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 cursor-pointer"
                     >
-                      <option value="">All Regions</option>
-                      {Object.entries(availableRegions).map(([r, count]) => (
-                        <option key={r} value={r}>{r} ({count})</option>
-                      ))}
+                      <option value="all">{t('filters.allNodes')}</option>
+                      <option value="anchors">{t('filters.anchors')}</option>
+                      <option value="vnodes">{t('filters.vnodes')}</option>
                     </select>
-                  )}
-                </div>
-              )}
+                    {Object.keys(availableRegions).length > 0 && (
+                      <select
+                        aria-label={t('filters.filterByRegion')}
+                        value={data.regionFilter}
+                        onChange={(e) => data.setRegionFilter(e.target.value)}
+                        className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 cursor-pointer"
+                      >
+                        <option value="">{t('filters.allRegions')}</option>
+                        {Object.entries(availableRegions).map(([r, count]) => (
+                          <option key={r} value={r}>
+                            {r} ({count})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+              <NodeTable
+                nodes={visibleNodes}
+                selectedNodeId={selectedNodeId}
+                onNodeSelect={setSelectedNodeId}
+                isAdmin={isAdmin}
+                staleCutoff={staleCutoff}
+                emptyMessage={t(nodes.length === 0 ? 'empty.noNodesRegistered' : 'empty.noNodesMatchFilter')}
+              />
             </div>
-            <NodeTable
-              nodes={visibleNodes}
-              selectedNodeId={selectedNodeId}
-              onNodeSelect={setSelectedNodeId}
-              isAdmin={isAdmin}
-              staleCutoff={staleCutoff}
-              emptyMessage={nodes.length === 0 ? 'No nodes registered' : 'No nodes match this filter'}
-            />
           </div>
-        </div>
-      </main>
+        </main>
 
       {selectedNode && (
         <NodeDetailPanel
+          key={selectedNode.node_id}
           node={selectedNode}
           knownNodeIds={knownNodeIds}
           onClose={() => setSelectedNodeId(null)}
@@ -257,12 +200,8 @@ export default function SpaApp() {
         />
       )}
 
-      {loginModalOpen && (
-        <LoginModal
-          onSuccess={handleLoginSuccess}
-          onClose={() => setLoginModalOpen(false)}
-        />
-      )}
-    </div>
+        {loginModalOpen && <LoginModal onClose={() => setLoginModalOpen(false)} />}
+      </div>
+    </TrackerContext.Provider>
   );
 }

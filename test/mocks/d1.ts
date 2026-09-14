@@ -13,9 +13,9 @@ export interface StmtConfig {
 export function createStmt(config: StmtConfig = {}) {
   const stmt = {
     bind: vi.fn().mockReturnThis(),
-    run: vi.fn().mockResolvedValue({ meta: { changes: config.changes ?? 1 } }),
+    run: vi.fn().mockResolvedValue({ success: true, meta: { changes: config.changes ?? 1 } }),
     first: vi.fn().mockResolvedValue(config.firstResult ?? null),
-    all: vi.fn().mockResolvedValue({ results: config.allResults ?? [] }),
+    all: vi.fn().mockResolvedValue({ success: true, results: config.allResults ?? [] }),
   };
   return stmt as unknown as D1PreparedStatement;
 }
@@ -30,6 +30,10 @@ export function createD1(...stmts: ReturnType<typeof createStmt>[]): D1Database 
     mockPrepare.mockReturnValueOnce(stmt);
   }
   mockPrepare.mockReturnValue(createStmt());
-  const db = { prepare: mockPrepare, withSession: vi.fn().mockReturnThis() } as unknown as D1Database;
+  const db = {
+    prepare: mockPrepare,
+    withSession: vi.fn().mockReturnThis(),
+    getBookmark: vi.fn().mockReturnValue(null),
+  } as unknown as D1Database;
   return db;
 }

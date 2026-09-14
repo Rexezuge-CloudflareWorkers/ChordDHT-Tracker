@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@chord-dht-tracker/background": ["./src"],
+      "@chord-dht-tracker/background/*": ["./src/*"],
+      "@chord-dht-tracker/backend-data": ["../../packages/backend-data/src"],
+      "@chord-dht-tracker/backend-data/*": ["../../packages/backend-data/src/*"],
+      "@chord-dht-tracker/backend-errors": ["../../packages/backend-errors/src"],
+      "@chord-dht-tracker/backend-errors/*": ["../../packages/backend-errors/src/*"],
+      "@chord-dht-tracker/backend-runtime": ["../../packages/backend-runtime/src"],
+      "@chord-dht-tracker/backend-runtime/*": ["../../packages/backend-runtime/src/*"],
+      "@chord-dht-tracker/backend-services": ["../../packages/backend-services/src"],
+      "@chord-dht-tracker/backend-services/*": ["../../packages/backend-services/src/*"],
+      "@chord-dht-tracker/shared": ["../../packages/shared/src"],
+      "@chord-dht-tracker/shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["../../worker-configuration.d.ts", "src/env.d.ts", "src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

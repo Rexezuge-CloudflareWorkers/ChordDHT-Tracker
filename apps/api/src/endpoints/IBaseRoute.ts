@@ -1,23 +1,136 @@
-import type { Context } from 'hono';
+import { OpenAPIRoute } from 'chanfana';
+import { Context } from 'hono';
+import type { StatusCode } from 'hono/utils/http-status';
+import { BadRequestError, DefaultInternalServerError, ServiceError } from '@chord-dht-tracker/backend-errors';
+import { validateRequestInput } from '@chord-dht-tracker/shared/schema';
 
-type RouteContext = Context<{ Bindings: Env }>;
+abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse, TEnv extends IEnv> extends OpenAPIRoute {
+  constructor(params?: OpenAPIRouteParams) {
+    super(params ?? ({} as OpenAPIRouteParams));
+  }
 
-abstract class IBaseRoute {
-  async handle(c: RouteContext): Promise<Response> {
+  public override async handle(c: RouteContext<TEnv>) {
     try {
-      return await this.handleRequest(c);
+      let body: unknown = {};
+      try {
+        body = await c.req.json();
+      } catch {
+        body = {};
+      }
+      const validationResult = await validateRequestInput(c.req.raw, body);
+      if (!validationResult.success) {
+        throw new BadRequestError(validationResult.error);
+      }
+      const validatedBody: unknown = validationResult.data;
+      const request: TRequest = { ...(validatedBody as TRequest), raw: c.req.raw };
+      const response: TResponse | ExtendedResponse<TResponse> = await this.handleRequest(request, c.env as TEnv, c);
+      return this.toResponse(response, c);
     } catch (error: unknown) {
       return this.toErrorResponse(error, c);
     }
   }
 
-  protected abstract handleRequest(c: RouteContext): Promise<Response>;
+  protected abstract handleRequest(
+    request: TRequest,
+    env: TEnv,
+    cxt: RouteContext<TEnv>,
+  ): Promise<TResponse | ExtendedResponse<TResponse>>;
 
-  protected toErrorResponse(error: unknown, c: RouteContext): Response {
-    console.error('Caught error during request handling:', error);
-    return c.json({ error: { code: 'INTERNAL_ERROR', message: 'An internal error occurred', detail: {} } }, 500);
+  protected toResponse(response: TResponse | ExtendedResponse<TResponse>, c: RouteContext<TEnv>) {
+    if (
+      response &&
+      typeof response === 'object' &&
+      ('body' in response || 'rawBody' in response || 'statusCode' in response || 'headers' in response)
+    ) {
+      const extendedResponse: ExtendedResponse<TResponse> = response;
+      const statusCode: number = extendedResponse.statusCode || 200;
+      const headers = Object.entries(extendedResponse.headers ?? {});
+      for (const [key, value] of headers) {
+        c.header(key, value);
+      }
+      c.status(statusCode as StatusCode);
+      if (statusCode >= 300 && statusCode < 400) {
+        return c.body(null);
+      }
+      if ('rawBody' in extendedResponse) {
+        return c.body((extendedResponse.rawBody ?? null) as never);
+      }
+      return c.json(extendedResponse.body);
+    }
+    return c.json(response);
+  }
+
+  protected getQueryParam(request: IRequest, name: string): string | undefined {
+    return new URL(request.raw.url).searchParams.get(name) ?? undefined;
+  }
+
+  protected getIntQueryParam(request: IRequest, name: string, fallback: number, min: number, max: number): number {
+    const raw = this.getQueryParam(request, name);
+    if (raw === undefined) return fallback;
+    const parsed = Number(raw);
+    if (!Number.isSafeInteger(parsed)) return fallback;
+    return Math.max(min, Math.min(max, parsed));
+  }
+
+  protected getPathParam(cxt: RouteContext<TEnv>, name: string): string {
+    return cxt.req.param(name) ?? '';
+  }
+
+  protected toErrorResponse(error: unknown, c: RouteContext<TEnv>) {
+    // Typed service errors (including NotFoundError/DatabaseError and 5xx
+    // domain errors) map to their own status/type/message with the original
+    // cause preserved. Only untyped errors are masked as internal errors.
+    if (error instanceof ServiceError) {
+      if (error.getErrorCode() < 500) {
+        console.warn(`Responding with ${error.getErrorType()}:`, error.stack);
+      } else {
+        console.error(`Responding with ${error.getErrorType()}:`, error);
+      }
+      return c.json({ Exception: { Type: error.getErrorType(), Message: error.getErrorMessage() } }, error.getErrorCode());
+    }
+    console.error('Caught service error during execution:', error);
+    return c.json(
+      {
+        Exception: {
+          Type: DefaultInternalServerError.getErrorType(),
+          Message: DefaultInternalServerError.getErrorMessage(),
+        },
+      },
+      DefaultInternalServerError.getErrorCode(),
+    );
   }
 }
 
+interface IRequest {
+  raw: Request;
+}
+
+type OpenAPIRouteParams = ConstructorParameters<typeof OpenAPIRoute>[0];
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface IResponse {}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface IEnv {}
+
+interface ExtendedResponse<TResponse extends IResponse> {
+  body?: TResponse;
+  rawBody?: BodyInit | null;
+  statusCode?: StatusCode;
+  headers?: Record<string, string>;
+}
+
+// Shared Tracker worker env (narrow view): every tracker route receives at
+// least these bindings. Mirrors ServiceEnv structurally so handlers pass `env`
+// straight to createRequestScope without casts.
+interface TrackerEnv extends IEnv {
+  DB: D1Database;
+  NODE_RATE_LIMITER: RateLimit;
+  CA_PUBLIC_KEY_BASE64: SecretsStoreSecret | { get(): Promise<string> };
+  ADMIN_SECRET: SecretsStoreSecret | { get(): Promise<string> };
+}
+
+type RouteContext<TEnv extends IEnv> = Context<{ Bindings: Env } & TEnv>;
+
 export { IBaseRoute };
-export type { RouteContext };
+export type { ExtendedResponse, IEnv, IRequest, IResponse, RouteContext, TrackerEnv };

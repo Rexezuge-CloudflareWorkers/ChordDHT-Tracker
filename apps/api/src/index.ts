@@ -1,6 +1,7 @@
 import { ChordDHTTrackerWorker } from '@/workers';
 
 export { StaleCleanupWorker } from '@/workers/StaleCleanupWorker';
+export { CronTasksWorker } from '@chord-dht-tracker/background/CronTasksWorker';
 
 const worker = new ChordDHTTrackerWorker();
 
