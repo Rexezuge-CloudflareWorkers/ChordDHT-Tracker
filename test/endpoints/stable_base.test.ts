@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { hashURI } from '@/auth';
+import { CertService } from '@chord-dht-tracker/backend-services/auth';
+import type { ServiceEnv } from '@chord-dht-tracker/backend-runtime/config';
 import { ChordDHTTrackerWorker } from '@/workers';
 import { createD1, createStmt } from '../mocks/d1';
 import { createEnv } from '../mocks/env';
+
+const certService = new CertService({} as ServiceEnv);
+const hashURI = (uri: string): Promise<string> => certService.hashURI(uri);
 
 describe('GET /tracker/stable_base', () => {
   it('reports healthy stable base when enough configured members are live', async () => {

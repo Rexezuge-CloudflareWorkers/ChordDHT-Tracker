@@ -1,0 +1,8 @@
+export const DEFAULT_MAX_NODES = '1000';
+export const DEFAULT_STALE_THRESHOLD_SECONDS = '600';
+export const DEFAULT_STALE_CLEANUP_AFTER_HOURS = '24';
+export const DEFAULT_MAX_VNODES_PER_ANCHOR = '8';
+export const DEFAULT_MIN_ANCHOR_RATIO = '0.20';
+export const DEFAULT_SERVE_SPA_FROM_WORKER = 'false';
+export const DEFAULT_STABLE_BASE_MEMBERS = '';
+export const DEFAULT_STABLE_BASE_MIN_SIZE = '6';

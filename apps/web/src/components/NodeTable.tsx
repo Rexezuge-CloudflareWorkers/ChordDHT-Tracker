@@ -101,12 +101,12 @@ export function NodeTable({
                   </td>
                 )}
                 <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">
-                  {node.last_seen !== null
-                    ? formatRelativeTime(node.last_seen)
-                    : <span className="font-mono text-gray-600">{'******'}</span>}
+                  {node.last_seen === null
+                    ? <span className="font-mono text-gray-600">{'******'}</span>
+                    : formatRelativeTime(node.last_seen)}
                 </td>
                 <td className="py-2 text-xs text-gray-500 tabular-nums">
-                  {node.report_count !== null ? node.report_count : <span className="font-mono text-gray-600">{'******'}</span>}
+                  {node.report_count === null ? <span className="font-mono text-gray-600">{'******'}</span> : node.report_count}
                 </td>
               </tr>
             );

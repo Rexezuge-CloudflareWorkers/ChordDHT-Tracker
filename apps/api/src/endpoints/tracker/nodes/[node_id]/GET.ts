@@ -1,37 +1,43 @@
+import { BadRequestError } from '@chord-dht-tracker/backend-errors';
+import { createRequestScope, Tokens } from '@chord-dht-tracker/backend-services/composition';
+import type { PublicTrackerNodeRecord, TrackerNodeRecord } from '@chord-dht-tracker/shared';
 import { IBaseRoute } from '@/endpoints/IBaseRoute';
-import type { RouteContext } from '@/endpoints/IBaseRoute';
-import type { TrackerNodeRecord } from '@/types';
-import { sanitizeNode } from '@/types';
-import { errorResponse } from '@/errors';
-import { isAdmin } from '@/auth';
-import { parseNodeJsonColumns, getLogicalVNodeByID } from '@/db';
+import type { IRequest, RouteContext, TrackerEnv } from '@/endpoints/IBaseRoute';
 
 const NODE_ID_REGEX = /^[0-9a-f]{40}$/;
 
-class NodeGetRoute extends IBaseRoute {
-  protected async handleRequest(c: RouteContext): Promise<Response> {
-    const node_id = c.req.param('node_id') ?? '';
+class NodeGetRoute extends IBaseRoute<NodeGetRequest, NodeGetResponse, NodeGetEnv> {
+  public override schema = {
+    tags: ['tracker'],
+    summary: 'Get a specific node record',
+    responses: {
+      '200': {
+        description: 'Node record (full data requires admin token)',
+      },
+    },
+  };
+
+  protected async handleRequest(
+    request: NodeGetRequest,
+    env: NodeGetEnv,
+    cxt: RouteContext<NodeGetEnv>,
+  ): Promise<NodeGetResponse> {
+    const node_id = this.getPathParam(cxt, 'node_id');
     if (!NODE_ID_REGEX.test(node_id)) {
-      return errorResponse('INVALID_REQUEST', 'node_id must be a 40-character lowercase hex string', 400);
+      throw new BadRequestError('node_id must be a 40-character lowercase hex string');
     }
 
-    const db = c.env.DB.withSession('first-unconstrained');
-    const node = await db.prepare('SELECT * FROM nodes WHERE node_id = ?')
-      .bind(node_id)
-      .first<TrackerNodeRecord>();
-
-    const admin = await isAdmin(c.req.raw, c.env);
-    if (node) {
-      return c.json(sanitizeNode(parseNodeJsonColumns({ ...node, is_vnode: false }), admin));
-    }
-
-    if (admin) {
-      const vnode = await getLogicalVNodeByID(db, node_id);
-      if (vnode) return c.json(vnode);
-    }
-
-    return errorResponse('NODE_NOT_FOUND', `Node ${node_id} not found`, 404);
+    const scope = createRequestScope(env);
+    const admin = await scope.get(Tokens.AuthService).isAdmin(request.raw);
+    return scope.get(Tokens.NodeService).getById(node_id, admin);
   }
 }
 
+type NodeGetRequest = IRequest;
+
+type NodeGetResponse = (TrackerNodeRecord | PublicTrackerNodeRecord);
+
+type NodeGetEnv = TrackerEnv;
+
 export { NodeGetRoute };
+export type { NodeGetEnv, NodeGetRequest, NodeGetResponse };

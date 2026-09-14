@@ -1,0 +1,42 @@
+{
+  "app": {
+    "title": "Chord DHT Tracker",
+    "loading": "Loading…",
+    "lastUpdated": "Last updated {{time}}",
+    "autoRefresh": "auto-refreshes every {{seconds}}s",
+    "paused": "Paused",
+    "login": "Login",
+    "adminLogout": "Admin · Logout",
+    "pause": "Pause",
+    "resume": "Resume"
+  },
+  "sections": {
+    "ringTopology": "Ring Topology",
+    "nodes": "Nodes"
+  },
+  "filters": {
+    "allNodes": "All Nodes",
+    "anchors": "Anchor Nodes",
+    "vnodes": "Virtual Nodes",
+    "allRegions": "All Regions",
+    "filterByType": "Filter nodes by type",
+    "filterByRegion": "Filter nodes by region"
+  },
+  "empty": {
+    "noNodesRegistered": "No nodes registered",
+    "noNodesMatchFilter": "No nodes match this filter"
+  },
+  "login": {
+    "title": "Admin Login",
+    "placeholder": "Admin password",
+    "submit": "Log in",
+    "verifying": "Verifying…",
+    "cancel": "Cancel",
+    "invalidPassword": "Invalid password"
+  },
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "german": "Deutsch"
+  }
+}

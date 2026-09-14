@@ -64,8 +64,8 @@ describe('POST /tracker/nodes', () => {
     );
 
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe('INVALID_REQUEST');
+    const body = (await res.json()) as { Exception: { Type: string; Message: string } };
+    expect(body.Exception.Type).toBe('BadRequest');
   });
 
   it('returns 400 when node_id contains uppercase hex', async () => {
@@ -98,8 +98,8 @@ describe('POST /tracker/nodes', () => {
     );
 
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe('INVALID_REQUEST');
+    const body = (await res.json()) as { Exception: { Type: string; Message: string } };
+    expect(body.Exception.Type).toBe('BadRequest');
   });
 
   it('returns 400 for malformed JSON body', async () => {
@@ -132,8 +132,8 @@ describe('POST /tracker/nodes', () => {
     );
 
     expect(res.status).toBe(429);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe('RATE_LIMITED');
+    const body = (await res.json()) as { Exception: { Type: string; Message: string } };
+    expect(body.Exception.Type).toBe('RateLimited');
   });
 });
 
@@ -165,8 +165,8 @@ describe('DELETE /tracker/nodes/:node_id', () => {
     );
 
     expect(res.status).toBe(404);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe('NODE_NOT_FOUND');
+    const body = (await res.json()) as { Exception: { Type: string; Message: string } };
+    expect(body.Exception.Type).toBe('NotFound');
   });
 
   it('deregisters an existing vnode', async () => {
@@ -432,8 +432,8 @@ describe('GET /tracker/nodes/:node_id', () => {
     );
 
     expect(res.status).toBe(404);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe('NODE_NOT_FOUND');
+    const body = (await res.json()) as { Exception: { Type: string; Message: string } };
+    expect(body.Exception.Type).toBe('NotFound');
   });
 
   it('returns 400 for an invalid node_id format in the path', async () => {

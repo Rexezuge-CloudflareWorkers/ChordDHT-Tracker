@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { StaleCleanupWorker } from '@/workers/StaleCleanupWorker';
-import { tasksForPhase } from '@/cron/TaskRegistry';
+import { tasksForPhase } from '@chord-dht-tracker/background/scheduled';
 import { createD1, createStmt } from '../mocks/d1';
 import { createEnv } from '../mocks/env';
 

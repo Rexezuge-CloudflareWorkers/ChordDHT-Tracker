@@ -1,0 +1,9 @@
+export const TRACKER_MAX_NODES = 1000;
+export const TRACKER_STALE_THRESHOLD_SECONDS = 600;
+export const TRACKER_CLEANUP_AFTER_HOURS = 24;
+export const TRACKER_MAX_VNODES_PER_ANCHOR = 8;
+export const TRACKER_MIN_ANCHOR_RATIO = 0.2;
+export const TRACKER_STABLE_BASE_MIN_SIZE = 6;
+export const TRACKER_STABLE_BASE_MEMBERS_DEFAULT = '';
+export const TRACKER_SERVE_SPA_FROM_WORKER_DEFAULT = false;
+export const NODE_ID_PATTERN: RegExp = /^[0-9a-f]{40}$/;

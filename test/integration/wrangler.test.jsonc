@@ -1,0 +1,61 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "chord-dht-tracker-integration",
+  "main": "../../apps/api/src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": [],
+  "workers_dev": false,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CRON_TASKS",
+        "class_name": "StaleCleanupWorker"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["StaleCleanupWorker"]
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "chord-dht-tracker-integration-db",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "NODE_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 10,
+        "period": 60
+      }
+    }
+  ],
+  "secrets_store_secrets": [
+    {
+      "binding": "CA_PUBLIC_KEY_BASE64",
+      "store_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "secret_name": "integration-ca-public-key"
+    },
+    {
+      "binding": "ADMIN_SECRET",
+      "store_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "secret_name": "integration-admin-secret"
+    }
+  ],
+  "vars": {
+    "MAX_NODES": "1000",
+    "STALE_THRESHOLD_SECONDS": "600",
+    "STALE_CLEANUP_AFTER_HOURS": "24",
+    "MAX_VNODES_PER_ANCHOR": "8",
+    "MIN_ANCHOR_RATIO": "0.20",
+    "SERVE_SPA_FROM_WORKER": "false",
+    "STABLE_BASE_MEMBERS": "",
+    "STABLE_BASE_MIN_SIZE": "6"
+  }
+}

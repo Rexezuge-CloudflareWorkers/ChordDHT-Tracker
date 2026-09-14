@@ -4,6 +4,9 @@ permissions:
   contents: read
 
 on:
+  repository_dispatch:
+    types:
+      - Upstream Sync
   pull_request:
   push:
     branches:
@@ -21,22 +24,33 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: pnpm
+      - name: Run Type Check and Lint
+        run: pnpm -r typecheck && pnpm run lint
 
-      - name: Install Dependencies
-        run: pnpm install
+      - name: Check God-Files
+        run: node scripts/check-god-files.mjs
 
-      - name: Run Checks (typecheck + lint + test)
-        run: pnpm run checks
+      - name: Run Tests with Coverage
+        run: pnpm run test:coverage
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Run Integration Tests
+        run: pnpm run test:integration
 
   build:
     name: Build
@@ -44,31 +58,20 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: pnpm
-
-      - name: Install Dependencies
-        run: pnpm install
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
 
       - name: Build Web App
         run: pnpm --filter @chord-dht-tracker/web build
-
-      - name: Type Check API Worker
-        run: pnpm --filter @chord-dht-tracker/api typecheck
 
   dependabot-auto-merge:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.state == 'open' && !github.event.repository.fork }}
     name: Auto-Merge Dependabot PR
     needs:
       - checks
+      - integration-tests
       - build
     permissions:
       contents: write
@@ -76,8 +79,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
       - name: Enable Auto-Merge
-        run: gh pr merge --auto --merge "$PR_URL"
+        uses: ./.github/actions/retry-step
+        with:
+          command: gh pr merge --auto --merge "$PR_URL"
+          max_attempts: '5'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+
+  dispatch-upstream-sync-deployment:
+    if: ${{ github.event_name == 'repository_dispatch' && github.event.action == 'Upstream Sync' }}
+    name: Dispatch Upstream Sync Deployment
+    needs:
+      - checks
+      - integration-tests
+      - build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Dispatch Deployment
+        uses: ./.github/actions/retry-step
+        with:
+          command: >
+            printf '{"event_type":"Upstream Sync Deployment","client_payload":{"branch":"%s","sha":"%s"}}\n'
+            "$PAYLOAD_BRANCH" "$PAYLOAD_SHA"
+            | gh api repos/${{ github.repository }}/dispatches --method POST --input -
+          max_attempts: '2'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAYLOAD_BRANCH: ${{ github.event.client_payload.branch || 'main' }}
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha || github.sha }}

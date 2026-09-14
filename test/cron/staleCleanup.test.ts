@@ -1,24 +1,38 @@
-import { describe, expect, it, vi } from 'vitest';
-import { cleanupStaleNodes, getStaleCleanupAfterHours } from '@/db';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppConfiguration } from '@chord-dht-tracker/backend-runtime/config';
+import type { ServiceEnv } from '@chord-dht-tracker/backend-runtime/config';
+import { MaintenanceService } from '@chord-dht-tracker/backend-services/maintenance';
 import { createD1, createStmt } from '../mocks/d1';
 import { createEnv } from '../mocks/env';
 
-describe('getStaleCleanupAfterHours', () => {
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('getCleanupAfterHours', () => {
   it('defaults to 24 when unset or invalid', () => {
     const db = createD1();
-    expect(getStaleCleanupAfterHours(createEnv(db))).toBe(24);
-    expect(getStaleCleanupAfterHours(createEnv(db, true, null, { STALE_CLEANUP_AFTER_HOURS: 'abc' }))).toBe(24);
-    expect(getStaleCleanupAfterHours(createEnv(db, true, null, { STALE_CLEANUP_AFTER_HOURS: '0' }))).toBe(24);
-    expect(getStaleCleanupAfterHours(createEnv(db, true, null, { STALE_CLEANUP_AFTER_HOURS: '-5' }))).toBe(24);
+    expect(AppConfiguration.fromEnv(createEnv(db)).getCleanupAfterHours()).toBe(24);
+    expect(
+      AppConfiguration.fromEnv(createEnv(db, true, null, { STALE_CLEANUP_AFTER_HOURS: 'abc' })).getCleanupAfterHours(),
+    ).toBe(24);
+    expect(
+      AppConfiguration.fromEnv(createEnv(db, true, null, { STALE_CLEANUP_AFTER_HOURS: '0' })).getCleanupAfterHours(),
+    ).toBe(24);
+    expect(
+      AppConfiguration.fromEnv(createEnv(db, true, null, { STALE_CLEANUP_AFTER_HOURS: '-5' })).getCleanupAfterHours(),
+    ).toBe(24);
   });
 
   it('returns the configured positive value', () => {
     const db = createD1();
-    expect(getStaleCleanupAfterHours(createEnv(db, true, null, { STALE_CLEANUP_AFTER_HOURS: '48' }))).toBe(48);
+    expect(
+      AppConfiguration.fromEnv(createEnv(db, true, null, { STALE_CLEANUP_AFTER_HOURS: '48' })).getCleanupAfterHours(),
+    ).toBe(48);
   });
 });
 
-describe('cleanupStaleNodes', () => {
+describe('MaintenanceService.runCleanup', () => {
   const nowMs = new Date('2026-09-14T12:00:00.000Z').getTime();
 
   it('deletes stale vnodes/anchors with matching cutoffs and recounts vnode_count', async () => {
@@ -29,7 +43,8 @@ describe('cleanupStaleNodes', () => {
       createStmt({ changes: 5 }),
     );
 
-    const summary = await cleanupStaleNodes(db, nowMs, 24);
+    const service = new MaintenanceService(createEnv(db) as unknown as ServiceEnv);
+    const summary = await service.runCleanup(nowMs, 24);
 
     expect(summary).toEqual({ deletedAnchors: 2, deletedVnodes: 3, orphanVnodes: 1 });
 
@@ -51,7 +66,9 @@ describe('cleanupStaleNodes', () => {
 
   it('falls back to 24h for non-positive afterHours', async () => {
     const db = createD1(createStmt({ changes: 0 }), createStmt({ changes: 0 }), createStmt({ changes: 0 }), createStmt());
-    const summary = await cleanupStaleNodes(db, nowMs, 0);
+
+    const service = new MaintenanceService(createEnv(db) as unknown as ServiceEnv);
+    const summary = await service.runCleanup(nowMs, 0);
     expect(summary).toEqual({ deletedAnchors: 0, deletedVnodes: 0, orphanVnodes: 0 });
 
     const prepare = db.prepare as unknown as ReturnType<typeof vi.fn>;

@@ -63,8 +63,8 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
     );
 
     expect(res.status).toBe(404);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe('NODE_NOT_FOUND');
+    const body = (await res.json()) as { Exception: { Type: string; Message: string } };
+    expect(body.Exception.Type).toBe('NotFound');
   });
 
   it('persists topology for a registered vnode heartbeat', async () => {
@@ -104,8 +104,8 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
     );
 
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe('INVALID_REQUEST');
+    const body = (await res.json()) as { Exception: { Type: string; Message: string } };
+    expect(body.Exception.Type).toBe('BadRequest');
   });
 
   it('returns 429 when rate limit is exceeded', async () => {
@@ -118,8 +118,8 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
     );
 
     expect(res.status).toBe(429);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe('RATE_LIMITED');
+    const body = (await res.json()) as { Exception: { Type: string; Message: string } };
+    expect(body.Exception.Type).toBe('RateLimited');
   });
 
   it('applies batched vnode snapshots from the anchor heartbeat', async () => {
@@ -216,8 +216,8 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
     );
 
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe('INVALID_REQUEST');
+    const body = (await res.json()) as { Exception: { Type: string; Message: string } };
+    expect(body.Exception.Type).toBe('BadRequest');
   });
 
   it('rejects a non-array vnode_heartbeats field', async () => {

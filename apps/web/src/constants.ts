@@ -1,4 +1,4 @@
-export const REFRESH_INTERVAL_MS = 5_000;
+export const REFRESH_INTERVAL_MS = 5000;
 
 export const STATUS_COLORS: Record<string, string> = {
   ACTIVE: '#22c55e',

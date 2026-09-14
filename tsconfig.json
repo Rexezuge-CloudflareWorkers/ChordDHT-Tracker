@@ -14,5 +14,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["worker-configuration.d.ts", "scripts/**/*.ts", "vitest.config.mts"]
+  "include": ["worker-configuration.d.ts", "scripts/**/*.ts", "vitest.config.mts", "functions/**/*.ts"]
 }
