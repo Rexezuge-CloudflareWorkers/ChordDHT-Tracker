@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { adminHeaders, api, freshNode, registerNode, setupIntegration } from './helpers/setup';
+import { adminHeaders, api, freshNode, registerNode, setupIntegration } from '../helpers/setup';
 
 beforeAll(async () => {
   await setupIntegration();

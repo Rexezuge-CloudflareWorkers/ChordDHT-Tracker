@@ -92,6 +92,12 @@ class NodeRegistration {
       if (proof.vnode_id !== node_id) {
         throw new BadRequestError('vnode_id in proof does not match node_id in request');
       }
+      // Collision must be checked before the anchor upsert below inserts
+      // node_id into `nodes`; otherwise every vnode collides with itself.
+      if (await vnodeDAO.checkCollision(node_id, anchorId)) {
+        // ID_COLLISION prefix contract: endpoints map this to 409 ConflictError.
+        throw new BadRequestError('ID_COLLISION: vnode_id collides with an existing node or vnode');
+      }
     }
 
     const now = new Date();
@@ -108,10 +114,6 @@ class NodeRegistration {
     });
 
     if (isVNode) {
-      if (await vnodeDAO.checkCollision(node_id, anchorId)) {
-        // ID_COLLISION prefix contract: endpoints map this to 409 ConflictError.
-        throw new BadRequestError('ID_COLLISION: vnode_id collides with an existing node or vnode');
-      }
       const proof = proofRaw as VNodeProof;
       await vnodeDAO.upsert({
         vnodeId: node_id,

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { api, freshNode, registerNode, setupIntegration } from './helpers/setup';
+import { api, freshNode, registerNode, setupIntegration } from '../helpers/setup';
 
 const ids: string[] = [];
 

@@ -13,7 +13,7 @@ import {
   registerNode,
   setupIntegration,
   uriNodeId,
-} from './helpers/setup';
+} from '../helpers/setup';
 
 let anchorId = '';
 let vnodeId = '';

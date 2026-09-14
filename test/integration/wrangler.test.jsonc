@@ -55,7 +55,7 @@
     "MAX_VNODES_PER_ANCHOR": "8",
     "MIN_ANCHOR_RATIO": "0.20",
     "SERVE_SPA_FROM_WORKER": "false",
-    "STABLE_BASE_MEMBERS": "",
+    "STABLE_BASE_MEMBERS": "https://stable-0.example,https://stable-1.example,https://stable-2.example,https://stable-3.example,https://stable-4.example,https://stable-5.example,https://stable-6.example",
     "STABLE_BASE_MIN_SIZE": "6"
   }
 }

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { api, setupIntegration } from './helpers/setup';
+import { api, setupIntegration } from '../helpers/setup';
 
 beforeAll(async () => {
   await setupIntegration();

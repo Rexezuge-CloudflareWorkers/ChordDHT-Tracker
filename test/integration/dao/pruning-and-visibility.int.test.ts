@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { adminHeaders, api, freshNode, registerNode, setupIntegration } from './helpers/setup';
-import type { IntegrationEnv } from './helpers/setup';
+import { adminHeaders, api, freshNode, registerNode, setupIntegration } from '../helpers/setup';
+import type { IntegrationEnv } from '../helpers/setup';
 
 let testEnv: IntegrationEnv;
 let freshId = '';

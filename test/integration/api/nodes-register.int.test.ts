@@ -11,7 +11,7 @@ import {
   registerNode,
   setupIntegration,
   uriNodeId,
-} from './helpers/setup';
+} from '../helpers/setup';
 
 let caPrivateKey: CryptoKey;
 
