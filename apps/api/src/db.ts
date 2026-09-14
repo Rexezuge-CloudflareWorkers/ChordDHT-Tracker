@@ -11,6 +11,9 @@ const DEFAULT_STABLE_BASE_MIN_SIZE = 6;
 // Must exceed the slowest client heartbeat interval (quiet mode: 300s) with
 // margin for ticker granularity, clock skew, and one missed heartbeat.
 const DEFAULT_STALE_THRESHOLD_SECS = 600;
+// Physical deletion happens much later than the STALE flag: STALE is display-only
+// (default 600s), cleanup removes rows only after hours of no heartbeat.
+const DEFAULT_STALE_CLEANUP_AFTER_HOURS = 24;
 
 // Parse JSON TEXT columns that are stored as serialized strings in D1.
 export function parseNodeJsonColumns(node: TrackerNodeRecord): TrackerNodeRecord {
@@ -83,6 +86,49 @@ export function getStableBaseMemberURIs(env: Env): string[] {
 export function getStableBaseMinSize(env: Env): number {
   const value = parseInt(env.STABLE_BASE_MIN_SIZE, 10);
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_STABLE_BASE_MIN_SIZE;
+}
+
+export function getStaleCleanupAfterHours(env: Env): number {
+  const value = parseInt(env.STALE_CLEANUP_AFTER_HOURS, 10);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_STALE_CLEANUP_AFTER_HOURS;
+}
+
+export interface StaleCleanupSummary {
+  deletedAnchors: number;
+  deletedVnodes: number;
+  orphanVnodes: number;
+}
+
+// cleanupStaleNodes hard-deletes anchors/vnodes unseen for longer than
+// afterHours. Nodes store last_seen as TEXT ISO, vnodes as INTEGER unix seconds.
+// Also removes vnodes orphaned by anchor deletion (D1 does not enforce FKs)
+// and recounts vnode_count on surviving anchors.
+export async function cleanupStaleNodes(
+  db: D1Queryable,
+  nowMs: number,
+  afterHours: number,
+): Promise<StaleCleanupSummary> {
+  const hours = Number.isFinite(afterHours) && afterHours > 0 ? afterHours : DEFAULT_STALE_CLEANUP_AFTER_HOURS;
+  const cutoffUnix = Math.floor(nowMs / 1000) - Math.floor(hours * 3600);
+  const cutoffIso = new Date(cutoffUnix * 1000).toISOString();
+
+  const vnodeResult = await db.prepare('DELETE FROM vnodes WHERE last_seen < ?').bind(cutoffUnix).run();
+  const anchorResult = await db.prepare('DELETE FROM nodes WHERE last_seen < ?').bind(cutoffIso).run();
+  const orphanResult = await db
+    .prepare('DELETE FROM vnodes WHERE anchor_id NOT IN (SELECT node_id FROM nodes)')
+    .run();
+
+  await db
+    .prepare(
+      'UPDATE nodes SET vnode_count = (SELECT COUNT(*) FROM vnodes WHERE vnodes.anchor_id = nodes.node_id)',
+    )
+    .run();
+
+  return {
+    deletedAnchors: anchorResult.meta.changes ?? 0,
+    deletedVnodes: vnodeResult.meta.changes ?? 0,
+    orphanVnodes: orphanResult.meta.changes ?? 0,
+  };
 }
 
 export async function getStartedAt(db: D1Queryable, now: string): Promise<string> {

@@ -54,6 +54,30 @@ class ChordDHTTrackerWorker {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     return this.app.fetch(request, env, ctx);
   }
+
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    const stub = env.CRON_TASKS.get(env.CRON_TASKS.idFromName('global'));
+    const request = new Request('http://internal/run', {
+      method: 'POST',
+      body: JSON.stringify({
+        cron: controller.cron,
+        scheduledTime: controller.scheduledTime,
+      }),
+    });
+
+    ctx.waitUntil(
+      stub
+        .fetch(request)
+        .then(async (response: Response): Promise<void> => {
+          if (!response.ok && response.status !== 202) {
+            console.error('StaleCleanupWorker returned an error response:', response.status, await response.text());
+          }
+        })
+        .catch((error: unknown): void => {
+          console.error('Failed to invoke StaleCleanupWorker:', error);
+        }),
+    );
+  }
 }
 
 export { ChordDHTTrackerWorker };

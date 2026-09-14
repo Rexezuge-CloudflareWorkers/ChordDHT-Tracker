@@ -6,5 +6,10 @@ declare global {
     STABLE_BASE_MIN_SIZE: string;
   }
 
-  type Env = CloudflareEnv & StableBaseEnv;
+  interface StaleCleanupEnv {
+    STALE_CLEANUP_AFTER_HOURS: string;
+    CRON_TASKS: DurableObjectNamespace;
+  }
+
+  type Env = CloudflareEnv & StableBaseEnv & StaleCleanupEnv;
 }
