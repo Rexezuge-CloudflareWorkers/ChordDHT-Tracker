@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { ADMIN_SECRET_VALUE, adminHeaders, api, setupIntegration } from './helpers/setup';
+import { ADMIN_SECRET_VALUE, adminHeaders, api, setupIntegration } from '../helpers/setup';
 
 beforeAll(async () => {
   await setupIntegration();
