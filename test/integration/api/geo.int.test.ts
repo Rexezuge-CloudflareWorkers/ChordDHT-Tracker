@@ -17,4 +17,10 @@ describe('GET /tracker/geo', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ region: null, country: 'DE' });
   });
+
+  it('ignores region-like headers (only cf.region feeds region)', async () => {
+    const res = await api('/tracker/geo', { headers: { 'cf-ipcountry': 'FR', region: 'spoofed' } });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ region: null, country: 'FR' });
+  });
 });

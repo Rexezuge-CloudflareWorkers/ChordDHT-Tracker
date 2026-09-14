@@ -132,6 +132,61 @@ describe('vnode policy enforcement', () => {
     expect(((await res.json()) as { Exception: { Type: string } }).Exception.Type).toBe('BadRequest');
   });
 
+  it('rejects a standalone vnode re-registration with 409 Conflict', async () => {
+    const anchor = await buildCertAnchor();
+    await registerNode(anchor.anchorId, anchor.uri, { certificate: anchor.certificate });
+
+    const vnodeId = await deriveVNodeID(anchor.anchorId, 3);
+    const { uri: vnodeUri } = freshNode();
+    const payload = {
+      node_id: vnodeId,
+      uri: vnodeUri,
+      anchor_id: anchor.anchorId,
+      vnode_proof: await makeProof(anchor, vnodeId, 3),
+    };
+    expect((await postJson('/tracker/nodes', payload)).status).toBe(200);
+
+    const again = await postJson('/tracker/nodes', { ...payload, uri: freshNode().uri });
+    expect(again.status).toBe(409);
+    expect(((await again.json()) as { Exception: { Type: string } }).Exception.Type).toBe('Conflict');
+  });
+
+  it('cascades anchor deletion to owned vnodes', async () => {
+    const anchor = await buildCertAnchor();
+    const vnodeId = await deriveVNodeID(anchor.anchorId, 0);
+    await registerNode(anchor.anchorId, anchor.uri, {
+      certificate: anchor.certificate,
+      vnodes: [{ vnode_id: vnodeId, index: 0, proof: await makeProof(anchor, vnodeId, 0) }],
+    });
+    expect((await api(`/tracker/nodes/${vnodeId}`, { headers: adminHeaders() })).status).toBe(200);
+
+    expect((await api(`/tracker/nodes/${anchor.anchorId}`, { method: 'DELETE' })).status).toBe(200);
+    expect((await api(`/tracker/nodes/${vnodeId}`, { headers: adminHeaders() })).status).toBe(404);
+    expect((await api(`/tracker/nodes/${anchor.anchorId}`, { headers: adminHeaders() })).status).toBe(404);
+  });
+
+  it('recounts the anchor vnode_count after a vnode delete', async () => {
+    const anchor = await buildCertAnchor();
+    const ids = [await deriveVNodeID(anchor.anchorId, 0), await deriveVNodeID(anchor.anchorId, 1)];
+    await registerNode(anchor.anchorId, anchor.uri, {
+      certificate: anchor.certificate,
+      vnodes: [
+        { vnode_id: ids[0], index: 0, proof: await makeProof(anchor, ids[0]!, 0) },
+        { vnode_id: ids[1], index: 1, proof: await makeProof(anchor, ids[1]!, 1) },
+      ],
+    });
+    const before = (await (
+      await api(`/tracker/nodes/${anchor.anchorId}`, { headers: adminHeaders() })
+    ).json()) as { vnode_count: number };
+    expect(before.vnode_count).toBe(2);
+
+    expect((await api(`/tracker/nodes/${ids[0]}`, { method: 'DELETE' })).status).toBe(200);
+    const after = (await (
+      await api(`/tracker/nodes/${anchor.anchorId}`, { headers: adminHeaders() })
+    ).json()) as { vnode_count: number };
+    expect(after.vnode_count).toBe(1);
+  });
+
   it('deletes a vnode and reports 404 on subsequent reads', async () => {
     const anchor = await buildCertAnchor();
     await registerNode(anchor.anchorId, anchor.uri, { certificate: anchor.certificate });

@@ -107,6 +107,15 @@ describe('POST /tracker/nodes', () => {
     expect(res.status).toBe(400);
   });
 
+  it('rejects missing fields and non-array vnodes', async () => {
+    const { node_id, uri } = freshNode();
+    for (const body of [{ uri }, { node_id }, { node_id, uri, vnodes: 'nope' }, {}]) {
+      const res = await postJson('/tracker/nodes', body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+      expect(((await res.json()) as { Exception: { Type: string } }).Exception.Type).toBe('BadRequest');
+    }
+  });
+
   it('rejects a vnode whose anchor is not registered', async () => {
     const { node_id: anchorId } = freshNode();
     const { node_id, uri } = freshNode();

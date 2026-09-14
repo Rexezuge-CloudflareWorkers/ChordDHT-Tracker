@@ -141,4 +141,115 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
     expect(record.is_vnode).toBe(true);
     expect(record.anchor_id).toBe(anchorId);
   });
+
+  it('returns 404 for unauthenticated vnode reads', async () => {
+    const res = await api(`/tracker/nodes/${vnodeId}`);
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as { Exception: { Type: string } }).Exception.Type).toBe('NotFound');
+  });
+
+  it('rejects an uppercase node_id on heartbeat', async () => {
+    const res = await postJson(`/tracker/nodes/${'D'.repeat(40)}/heartbeat`, {});
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { Exception: { Type: string } }).Exception.Type).toBe('BadRequest');
+  });
+
+  it('omits the vnodes key for an empty vnode batch', async () => {
+    const { node_id, uri } = freshNode();
+    await registerNode(node_id, uri);
+    const res = await postJson(`/tracker/nodes/${node_id}/heartbeat`, {
+      status: 'ACTIVE',
+      vnode_heartbeats: [],
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { acknowledged: boolean; vnodes?: unknown };
+    expect(body.acknowledged).toBe(true);
+    expect('vnodes' in body).toBe(false);
+  });
+
+  it('reports INVALID_REQUEST for malformed vnode_ids in a batch', async () => {
+    const { node_id, uri } = freshNode();
+    await registerNode(node_id, uri);
+    const res = await postJson(`/tracker/nodes/${node_id}/heartbeat`, {
+      vnode_heartbeats: [{ vnode_id: 'not-hex', status: 'ACTIVE' }],
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { vnodes: { updated: number; errors: { vnode_id: string; code: string }[] } };
+    expect(body.vnodes.updated).toBe(0);
+    expect(body.vnodes.errors).toEqual([{ vnode_id: 'not-hex', code: 'INVALID_REQUEST' }]);
+  });
+
+  it('rejects out-of-range heartbeat fields with 400', async () => {
+    const { node_id, uri } = freshNode();
+    await registerNode(node_id, uri);
+    const cases: Record<string, unknown>[] = [
+      { finger_table_coverage: 2 },
+      { uptime_seconds: -1 },
+      { successor_list: ['not-hex'] },
+      { status: 'x'.repeat(65) },
+    ];
+    for (const patch of cases) {
+      const res = await postJson(`/tracker/nodes/${node_id}/heartbeat`, patch);
+      expect(res.status, JSON.stringify(patch)).toBe(400);
+      expect(((await res.json()) as { Exception: { Type: string } }).Exception.Type).toBe('BadRequest');
+    }
+  });
+
+  it('persists full ring state across heartbeats', async () => {
+    const { node_id, uri } = freshNode();
+    await registerNode(node_id, uri);
+    const res = await postJson(`/tracker/nodes/${node_id}/heartbeat`, {
+      status: 'ACTIVE',
+      successor_id: node_id,
+      predecessor_id: node_id,
+      successor_list: [node_id],
+      predecessor_list: [node_id],
+      finger_nodes: [node_id],
+      rtt_samples: { [node_id]: 12.5 },
+      maintenance_mode: 'ACTIVE_MAINTENANCE',
+      region: 'hb-region',
+      cache_hits: 3,
+      cache_misses: 1,
+      cache_size: 4,
+    });
+    expect(res.status).toBe(200);
+
+    const record = (await (
+      await api(`/tracker/nodes/${node_id}`, { headers: adminHeaders() })
+    ).json()) as {
+      successor_id: string | null;
+      predecessor_id: string | null;
+      successor_list: string[] | null;
+      predecessor_list: string[] | null;
+      finger_nodes: string[] | null;
+      rtt_samples: Record<string, number> | null;
+      maintenance_mode: string | null;
+      region: string | null;
+      cache_hits: number | null;
+      cache_misses: number | null;
+      cache_size: number | null;
+    };
+    expect(record.successor_id).toBe(node_id);
+    expect(record.predecessor_id).toBe(node_id);
+    expect(record.successor_list).toEqual([node_id]);
+    expect(record.predecessor_list).toEqual([node_id]);
+    expect(record.finger_nodes).toEqual([node_id]);
+    expect(record.rtt_samples).toEqual({ [node_id]: 12.5 });
+    expect(record.maintenance_mode).toBe('ACTIVE_MAINTENANCE');
+    expect(record.region).toBe('hb-region');
+    expect(record.cache_hits).toBe(3);
+    expect(record.cache_misses).toBe(1);
+    expect(record.cache_size).toBe(4);
+  });
+
+  it('rate-limits heartbeats after 10 requests per minute', async () => {
+    const { node_id, uri } = freshNode();
+    await registerNode(node_id, uri);
+    for (let i = 0; i < 9; i += 1) {
+      expect((await postJson(`/tracker/nodes/${node_id}/heartbeat`, {})).status).toBe(200);
+    }
+    const limited = await postJson(`/tracker/nodes/${node_id}/heartbeat`, {});
+    expect(limited.status).toBe(429);
+    expect(((await limited.json()) as { Exception: { Type: string } }).Exception.Type).toBe('RateLimited');
+  });
 });

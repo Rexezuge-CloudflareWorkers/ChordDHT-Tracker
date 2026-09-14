@@ -66,4 +66,21 @@ describe('CRL revocation lifecycle', () => {
     const body = await registerNode(nodeId, uri, { certificate });
     expect(body.registered).toBe(true);
   });
+
+  it('documents the revocation-enforcement gap: a revoked node heartbeat is still accepted', async () => {
+    // Companion to the registration gap above: heartbeats from revoked nodes
+    // are also accepted. Flip to expect rejection when enforcement lands.
+    const { node_id, uri } = freshNode();
+    await registerNode(node_id, uri);
+    const now = Math.floor(Date.now() / 1000);
+    const uploaded = await postJson(
+      '/tracker/crl',
+      await makeCRL({ caPrivateKey, version: 4, updatedAt: now + 3, revokedIds: [node_id] }),
+    );
+    expect(uploaded.status).toBe(200);
+
+    const heartbeat = await postJson(`/tracker/nodes/${node_id}/heartbeat`, { status: 'ACTIVE' });
+    expect(heartbeat.status).toBe(200);
+    expect(((await heartbeat.json()) as { acknowledged: boolean }).acknowledged).toBe(true);
+  });
 });

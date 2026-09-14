@@ -84,4 +84,63 @@ describe('scheduled cleanup forwarding via the CRON_TASKS DO', () => {
     expect(body).toEqual({ status: 'completed' });
     expect((await api(`/tracker/nodes/${freshId}`, { headers: adminHeaders() })).status).toBe(200);
   });
+
+  it('completes a run with a malformed body via controller defaults', async () => {
+    const stub = testEnv.CRON_TASKS.get(testEnv.CRON_TASKS.idFromName('schedule-int'));
+    const res = await stub.fetch(new Request('http://internal/run', { method: 'POST', body: 'not json' }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'completed' });
+  });
+
+  it('honours the 24h boundary and deletes orphan vnodes while recounting survivors', async () => {
+    const justOver = freshNode();
+    const overIso = new Date(Date.now() - (24 * 3600 + 60) * 1000).toISOString();
+    await testEnv.DB.prepare('INSERT INTO nodes (node_id, uri, status, joined_at, last_seen) VALUES (?, ?, ?, ?, ?)')
+      .bind(justOver.node_id, justOver.uri, 'ACTIVE', overIso, overIso)
+      .run();
+
+    const justUnder = freshNode();
+    const underIso = new Date(Date.now() - (23 * 3600 + 50 * 60) * 1000).toISOString();
+    await testEnv.DB.prepare('INSERT INTO nodes (node_id, uri, status, joined_at, last_seen) VALUES (?, ?, ?, ?, ?)')
+      .bind(justUnder.node_id, justUnder.uri, 'ACTIVE', underIso, underIso)
+      .run();
+
+    // Fresh vnode under a surviving anchor. (Orphan vnodes cannot be seeded:
+    // vnodes.anchor_id REFERENCES nodes(node_id) ON DELETE CASCADE with FKs
+    // enforced, so deleteOrphans is defense-in-depth only. The cascade itself
+    // is pinned below: removing an anchor row removes its vnodes at once.)
+    const ownedId = freshNode().node_id;
+    const nowUnix = Math.floor(Date.now() / 1000);
+    await insertVnode(ownedId, justUnder.node_id, nowUnix);
+    const cascadeAnchor = freshNode();
+    const cascadeIso = new Date().toISOString();
+    await testEnv.DB.prepare('INSERT INTO nodes (node_id, uri, status, joined_at, last_seen) VALUES (?, ?, ?, ?, ?)')
+      .bind(cascadeAnchor.node_id, cascadeAnchor.uri, 'ACTIVE', cascadeIso, cascadeIso)
+      .run();
+    const cascadeVnodeId = freshNode().node_id;
+    await insertVnode(cascadeVnodeId, cascadeAnchor.node_id, nowUnix);
+    await testEnv.DB.prepare('DELETE FROM nodes WHERE node_id = ?').bind(cascadeAnchor.node_id).run();
+    const cascaded = await testEnv.DB.prepare('SELECT COUNT(*) as count FROM vnodes WHERE vnode_id = ?')
+      .bind(cascadeVnodeId)
+      .first<{ count: number }>();
+    expect(cascaded?.count).toBe(0);
+
+    const { status, body } = await runCleanup();
+    expect(status).toBe(200);
+    expect(body).toEqual({ status: 'completed' });
+
+    const anchors = await testEnv.DB.prepare('SELECT node_id FROM nodes').all<{ node_id: string }>();
+    const ids = new Set((anchors.results ?? []).map((row) => row.node_id));
+    expect(ids.has(justOver.node_id)).toBe(false);
+    expect(ids.has(justUnder.node_id)).toBe(true);
+
+    const vnodes = await testEnv.DB.prepare('SELECT vnode_id FROM vnodes').all<{ vnode_id: string }>();
+    const vnodeIds = new Set((vnodes.results ?? []).map((row) => row.vnode_id));
+    expect(vnodeIds.has(ownedId)).toBe(true);
+
+    const survivor = await testEnv.DB.prepare('SELECT vnode_count FROM nodes WHERE node_id = ?')
+      .bind(justUnder.node_id)
+      .first<{ vnode_count: number }>();
+    expect(survivor?.vnode_count).toBe(1);
+  });
 });

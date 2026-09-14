@@ -19,6 +19,18 @@ describe('x-d1-bookmark session header', () => {
     expect(res.headers.get('Access-Control-Expose-Headers')).toBe('x-d1-bookmark');
   });
 
+  it('exposes the bookmark header on deletes and not on non-tracker routes', async () => {
+    const { node_id, uri } = freshNode();
+    await registerNode(node_id, uri);
+    const deleted = await api(`/tracker/nodes/${node_id}`, { method: 'DELETE' });
+    expect(deleted.status).toBe(200);
+    expect(deleted.headers.get('Access-Control-Expose-Headers')).toBe('x-d1-bookmark');
+
+    const missed = await api('/nope');
+    expect(missed.status).toBe(404);
+    expect(missed.headers.get('Access-Control-Expose-Headers')).toBeNull();
+  });
+
   it('round-trips a returned bookmark on the next request', async () => {
     const { node_id, uri } = freshNode();
     await registerNode(node_id, uri);

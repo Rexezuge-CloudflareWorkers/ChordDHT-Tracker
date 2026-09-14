@@ -18,6 +18,13 @@ describe('management edge cases', () => {
     expect((await postJson('/tracker/nodes', { node_id: 'xyz', uri: 'https://x.example' })).status).toBe(400);
   });
 
+  it('rejects uppercase 40-hex node_ids with 400 across routes', async () => {
+    const upper = 'C'.repeat(40);
+    expect((await api(`/tracker/nodes/${upper}`)).status).toBe(400);
+    expect((await api(`/tracker/nodes/${upper}`, { method: 'DELETE' })).status).toBe(400);
+    expect((await postJson(`/tracker/nodes/${upper}/heartbeat`, {})).status).toBe(400);
+  });
+
   it('returns 404 for well-formed but unknown node_ids', async () => {
     const { node_id } = freshNode();
     expect((await api(`/tracker/nodes/${node_id}`)).status).toBe(404);
