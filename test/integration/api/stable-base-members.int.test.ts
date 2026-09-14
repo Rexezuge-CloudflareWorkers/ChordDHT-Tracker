@@ -77,4 +77,35 @@ describe('GET /tracker/stable_base with configured members', () => {
     expect(body.degraded).toBe(false);
     expect(body.emergency).toBe(false);
   });
+
+  it('marks a fresh but non-ACTIVE member as not live and exposes member fields', async () => {
+    const leavingUri = MEMBER_URIS[1]!;
+    const leavingId = await uriNodeId(leavingUri);
+    await testEnv.DB.prepare('UPDATE nodes SET status = ? WHERE node_id = ?').bind('LEAVING', leavingId).run();
+    const body = await readStableBase();
+    expect(body.live_count).toBe(5);
+    const member = body.members.find((m) => m.node_id === leavingId);
+    expect(member?.registered).toBe(true);
+    expect(member?.live).toBe(false);
+    expect(member?.status).toBe('LEAVING');
+    expect(member?.uri).toBe(leavingUri);
+    expect(typeof member?.last_seen).toBe('string');
+    expect(Number.isNaN(Date.parse(member!.last_seen!))).toBe(false);
+    expect(body.degraded).toBe(true);
+    expect(body.emergency).toBe(false);
+  });
+
+  it('reports emergency once live members drop below floor(min_size/2)+1', async () => {
+    const staleIso = new Date(Date.now() - 3600 * 1000).toISOString();
+    for (const uri of MEMBER_URIS.slice(2, 4)) {
+      await testEnv.DB.prepare('UPDATE nodes SET last_seen = ? WHERE node_id = ?')
+        .bind(staleIso, await uriNodeId(uri))
+        .run();
+    }
+    const body = await readStableBase();
+    expect(body.live_count).toBe(3);
+    expect(body.emergency_threshold).toBe(4);
+    expect(body.degraded).toBe(true);
+    expect(body.emergency).toBe(true);
+  });
 });

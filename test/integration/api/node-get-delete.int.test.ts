@@ -19,6 +19,32 @@ describe('GET /tracker/nodes/:node_id', () => {
     expect(((await res.json()) as { Exception: { Type: string; Message: string } }).Exception.Type).toBe('NotFound');
   });
 
+  it('rejects an uppercase node_id', async () => {
+    const res = await api(`/tracker/nodes/${'A'.repeat(40)}`);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { Exception: { Type: string } }).Exception.Type).toBe('BadRequest');
+  });
+
+  it('stays masked for wrong-token and malformed Authorization callers', async () => {
+    const { node_id } = freshNode();
+    await registerNode(node_id, `https://node-${node_id.slice(0, 8)}.example`);
+    for (const authorization of [
+      'Bearer wrong-secret',
+      'Bearer ',
+      'Token wrong-secret',
+      'bearer wrong-secret',
+    ]) {
+      const res = await api(`/tracker/nodes/${node_id}`, { headers: { Authorization: authorization } });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.node_id).toBe(node_id);
+      for (const [key, value] of Object.entries(body)) {
+        if (key === 'node_id') continue;
+        expect(value, `expected ${key} masked for ${authorization}`).toBeNull();
+      }
+    }
+  });
+
   it('masks fields for unauthenticated callers and shows full data to admins', async () => {
     const { node_id, uri } = freshNode();
     await registerNode(node_id, uri, { region: 'r9' });
@@ -44,6 +70,12 @@ describe('DELETE /tracker/nodes/:node_id', () => {
   it('rejects a malformed node_id', async () => {
     const res = await api('/tracker/nodes/not-hex', { method: 'DELETE' });
     expect(res.status).toBe(400);
+  });
+
+  it('rejects an uppercase node_id on DELETE', async () => {
+    const res = await api(`/tracker/nodes/${'B'.repeat(40)}`, { method: 'DELETE' });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { Exception: { Type: string } }).Exception.Type).toBe('BadRequest');
   });
 
   it('returns 404 for an unknown node', async () => {

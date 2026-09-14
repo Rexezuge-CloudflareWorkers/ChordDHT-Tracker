@@ -64,6 +64,38 @@ describe('CRL endpoints', () => {
     expect(stored.revoked_node_ids).toEqual([node_id]);
   });
 
+  it('rejects CRL bodies with invalid version, timestamps, ids, or signatures', async () => {
+    const { node_id } = freshNode();
+    const now = Math.floor(Date.now() / 1000);
+    const badBodies: Record<string, unknown>[] = [
+      { version: 0, updated_at: now, revoked_node_ids: [], signature: 'x' },
+      { version: -1, updated_at: now, revoked_node_ids: [], signature: 'x' },
+      { version: 1.5, updated_at: now, revoked_node_ids: [], signature: 'x' },
+      { version: 99, updated_at: 'now', revoked_node_ids: [], signature: 'x' },
+      { version: 99, updated_at: now, revoked_node_ids: 'nope', signature: 'x' },
+      { version: 99, updated_at: now, revoked_node_ids: [node_id] },
+      { version: 99, updated_at: now, revoked_node_ids: ['not-hex'], signature: 'x' },
+      { version: 99, updated_at: now, revoked_node_ids: [], signature: '' },
+    ];
+    for (const body of badBodies) {
+      const res = await postJson('/tracker/crl', body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+      expect(((await res.json()) as { Exception: { Type: string } }).Exception.Type).toBe('BadRequest');
+    }
+  });
+
+  it('rejects malformed JSON CRL bodies', async () => {
+    const res = await postJson('/tracker/crl', '{oops');
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { Exception: { Type: string } }).Exception.Type).toBe('BadRequest');
+  });
+
+  it('serves the CRL as application/json', async () => {
+    const fetched = await api('/tracker/crl');
+    expect(fetched.status).toBe(200);
+    expect(fetched.headers.get('Content-Type')).toContain('application/json');
+  });
+
   it('rejects a stale CRL version', async () => {
     const replay = await makeCRL({
       caPrivateKey,
@@ -85,6 +117,35 @@ describe('CRL endpoints', () => {
     const res = await postJson('/tracker/crl', next);
     expect(res.status).toBe(200);
     expect(((await res.json()) as { version: number }).version).toBe(2);
+  });
+
+  it('accepts unsorted revoked ids (signature input is canonical-sorted)', async () => {
+    const first = freshNode();
+    const second = freshNode();
+    const next = await makeCRL({
+      caPrivateKey,
+      version: 3,
+      updatedAt: Math.floor(Date.now() / 1000),
+      revokedIds: [second.node_id, first.node_id],
+    });
+    const res = await postJson('/tracker/crl', next);
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { version: number }).version).toBe(3);
+
+    const stored = (await (await api('/tracker/crl')).json()) as { revoked_node_ids: string[] };
+    expect([...stored.revoked_node_ids].sort()).toEqual([first.node_id, second.node_id].sort());
+  });
+
+  it('accepts a signature-gated upload even with a wrong admin token', async () => {
+    const next = await makeCRL({
+      caPrivateKey,
+      version: 4,
+      updatedAt: Math.floor(Date.now() / 1000),
+      revokedIds: [],
+    });
+    const res = await postJson('/tracker/crl', next, { Authorization: 'Bearer wrong-secret' });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { version: number }).version).toBe(4);
   });
 
   it('registers a node with a CA-signed cert and exposes it via seeds', async () => {
