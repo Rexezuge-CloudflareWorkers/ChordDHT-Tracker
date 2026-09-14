@@ -176,4 +176,14 @@ export interface HeartbeatBody {
   predecessor_list?: string[];
   rtt_samples?: Record<string, number>;
   finger_nodes?: string[];
+  // Batched per-vnode snapshots carried by the anchor heartbeat (Option B).
+  // Each item is a vnode heartbeat with identical semantics to a direct
+  // POST /tracker/nodes/:vnode_id/heartbeat. Absent for anchor-only nodes
+  // and old clients; ignored by old trackers.
+  vnode_heartbeats?: VNodeHeartbeatBody[];
 }
+
+// VNodeHeartbeatBody is one vnode snapshot inside an anchor heartbeat batch.
+export type VNodeHeartbeatBody = HeartbeatBody & {
+  vnode_id: string;
+};

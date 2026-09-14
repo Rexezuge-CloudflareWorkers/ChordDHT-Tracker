@@ -121,4 +121,118 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe('RATE_LIMITED');
   });
+
+  it('applies batched vnode snapshots from the anchor heartbeat', async () => {
+    const vnodeA = 'b'.repeat(40);
+    const vnodeB = 'c'.repeat(40);
+    const db = createD1(
+      createStmt({ changes: 1 }),
+      createStmt({ allResults: [{ vnode_id: vnodeA }, { vnode_id: vnodeB }] }),
+      createStmt({ changes: 1 }),
+      createStmt({ changes: 1 }),
+    );
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(HEARTBEAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...validBody,
+          vnode_heartbeats: [
+            { vnode_id: vnodeA, status: 'ACTIVE', successor_list_size: 2 },
+            { vnode_id: vnodeB, status: 'ACTIVE', successor_list_size: 2 },
+          ],
+        }),
+      }),
+      createEnv(db),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      acknowledged: boolean;
+      vnodes: { updated: number; errors: unknown[] };
+    };
+    expect(body.acknowledged).toBe(true);
+    expect(body.vnodes.updated).toBe(2);
+    expect(body.vnodes.errors).toEqual([]);
+    const calls = (db.prepare as ReturnType<typeof vi.fn>).mock.calls as string[][];
+    expect(calls[0][0]).toContain('UPDATE nodes SET');
+    expect(calls[2][0]).toContain('UPDATE vnodes SET');
+    expect(calls[2][0]).toContain('AND anchor_id = ?');
+  });
+
+  it('reports unknown vnodes per-item without failing owned updates', async () => {
+    const vnodeA = 'b'.repeat(40);
+    const unknown = 'd'.repeat(40);
+    const db = createD1(
+      createStmt({ changes: 1 }),
+      createStmt({ allResults: [{ vnode_id: vnodeA }] }),
+      createStmt({ changes: 1 }),
+    );
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(HEARTBEAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...validBody,
+          vnode_heartbeats: [
+            { vnode_id: vnodeA, status: 'ACTIVE' },
+            { vnode_id: unknown, status: 'ACTIVE' },
+          ],
+        }),
+      }),
+      createEnv(db),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      acknowledged: boolean;
+      vnodes: { updated: number; errors: Array<{ vnode_id: string; code: string }> };
+    };
+    expect(body.vnodes.updated).toBe(1);
+    expect(body.vnodes.errors).toEqual([{ vnode_id: unknown, code: 'UNKNOWN_VNODE' }]);
+  });
+
+  it('rejects batches over MAX_VNODES_PER_ANCHOR', async () => {
+    const db = createD1(createStmt({ changes: 1 }));
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(HEARTBEAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...validBody,
+          vnode_heartbeats: [
+            { vnode_id: 'b'.repeat(40), status: 'ACTIVE' },
+            { vnode_id: 'c'.repeat(40), status: 'ACTIVE' },
+          ],
+        }),
+      }),
+      createEnv(db, true, null, { MAX_VNODES_PER_ANCHOR: '1' }),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe('INVALID_REQUEST');
+  });
+
+  it('rejects a non-array vnode_heartbeats field', async () => {
+    const db = createD1(createStmt({ changes: 1 }));
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(HEARTBEAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...validBody, vnode_heartbeats: 'not-an-array' }),
+      }),
+      createEnv(db),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(400);
+  });
 });
