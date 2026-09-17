@@ -235,4 +235,74 @@ describe('POST /tracker/nodes/:node_id/heartbeat', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('returns crl_version without payload when the client omits crl_version', async () => {
+    const db = createD1(createStmt({ changes: 1 }), createStmt({ firstResult: { version: 4 } }));
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(HEARTBEAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validBody),
+      }),
+      createEnv(db),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { acknowledged: boolean; crl_version?: number; crl?: unknown };
+    expect(body.acknowledged).toBe(true);
+    expect(body.crl_version).toBe(4);
+    expect(body.crl).toBeUndefined();
+  });
+
+  it('inlines the CRL when the client crl_version is stale', async () => {
+    const crlJson = JSON.stringify({
+      version: 2,
+      updated_at: 1780000000,
+      revoked_node_ids: [],
+      signature: 'sig',
+    });
+    const db = createD1(
+      createStmt({ changes: 1 }),
+      createStmt({ firstResult: { version: 2 } }),
+      createStmt({ firstResult: { crl_json: crlJson } }),
+    );
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(HEARTBEAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...validBody, crl_version: 0 }),
+      }),
+      createEnv(db),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      acknowledged: boolean;
+      crl_version?: number;
+      crl?: { version: number };
+    };
+    expect(body.acknowledged).toBe(true);
+    expect(body.crl_version).toBe(2);
+    expect(body.crl?.version).toBe(2);
+  });
+
+  it('rejects a negative crl_version with 400', async () => {
+    const db = createD1(createStmt({ changes: 1 }));
+    const worker = new ChordDHTTrackerWorker();
+    const res = await worker.fetch(
+      new Request(HEARTBEAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...validBody, crl_version: -1 }),
+      }),
+      createEnv(db),
+      {} as ExecutionContext,
+    );
+
+    expect(res.status).toBe(400);
+  });
 });

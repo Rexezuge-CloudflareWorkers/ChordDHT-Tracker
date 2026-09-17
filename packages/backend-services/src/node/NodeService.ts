@@ -1,4 +1,4 @@
-import { NodeDAO, VNodeDAO } from '@chord-dht-tracker/backend-data/dao';
+import { CrlDAO, NodeDAO, VNodeDAO } from '@chord-dht-tracker/backend-data/dao';
 import type { D1Queryable } from '@chord-dht-tracker/backend-data/utils';
 import { AppConfiguration } from '@chord-dht-tracker/backend-runtime/config';
 import type {
@@ -21,6 +21,7 @@ interface NodeServiceDeps {
   vnodeDAO?: () => Promise<VNodeDAO>;
   certService?: () => Promise<CertService>;
   vnodeService?: () => Promise<VNodeService>;
+  crlDAO?: () => Promise<CrlDAO>;
   config?: AppConfiguration;
 }
 
@@ -44,6 +45,7 @@ class NodeService {
       vnodeDAO: () => Promise.resolve(new VNodeDAO(db)),
       certService: () => Promise.reject(new Error('CertService is not bound for this scope.')),
       vnodeService: () => Promise.reject(new Error('VNodeService is not bound for this scope.')),
+      crlDAO: () => Promise.resolve(new CrlDAO(db)),
       config: AppConfiguration.fromEnv(env),
       ...deps,
     };
@@ -92,6 +94,6 @@ export type {
   
 };
 
-export {type HeartbeatResult} from './NodeHeartbeat';
+export {type HeartbeatCrl, type HeartbeatResult} from './NodeHeartbeat';
 export {type ListNodesOptions, type ListNodesResult, type SeedOptions} from './NodeQuery';
 export {type RegisterNodeInput, type RegisterNodeResult} from './NodeRegistration';

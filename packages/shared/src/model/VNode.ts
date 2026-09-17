@@ -42,6 +42,10 @@ interface HeartbeatBody {
   // POST /tracker/nodes/:vnode_id/heartbeat. Absent for anchor-only nodes
   // and old clients; ignored by old trackers.
   vnode_heartbeats?: VNodeHeartbeatBody[];
+  // Client's current CRL version (0 = none). Sent only by clients that want
+  // inline CRL updates; absent for old clients and clients with CRL refresh
+  // disabled. Old trackers ignore it.
+  crl_version?: number;
 }
 
 // VNodeHeartbeatBody is one vnode snapshot inside an anchor heartbeat batch.

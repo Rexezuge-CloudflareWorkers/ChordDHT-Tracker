@@ -1,5 +1,5 @@
 export { NodeHeartbeat } from './NodeHeartbeat';
-export type { HeartbeatResult, NodeHeartbeatDeps } from './NodeHeartbeat';
+export type { HeartbeatCrl, HeartbeatResult, NodeHeartbeatDeps } from './NodeHeartbeat';
 export { NodeQuery } from './NodeQuery';
 export type { ListNodesOptions, ListNodesResult, NodeQueryDeps, SeedOptions } from './NodeQuery';
 export { NodeRegistration } from './NodeRegistration';
