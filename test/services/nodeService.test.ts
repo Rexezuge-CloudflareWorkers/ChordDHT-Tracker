@@ -58,6 +58,11 @@ function setup(vars: Record<string, string> = {}) {
     validateInlineVnodes: vi.fn().mockResolvedValue(0),
     applyBatchedHeartbeats: vi.fn().mockResolvedValue({ updated: 0, errors: [] }),
   };
+  const crlDAO = {
+    getLatest: vi.fn().mockResolvedValue(null),
+    getLatestVersion: vi.fn().mockResolvedValue(null),
+    insert: vi.fn().mockResolvedValue(undefined),
+  };
   const config = AppConfiguration.fromEnv({
     MAX_NODES: '1000',
     STALE_THRESHOLD_SECONDS: '600',
@@ -69,9 +74,10 @@ function setup(vars: Record<string, string> = {}) {
     vnodeDAO: () => Promise.resolve(vnodeDAO as unknown as VNodeDAO),
     certService: () => Promise.resolve(certService as unknown as CertService),
     vnodeService: () => Promise.resolve(vnodeService as unknown as VNodeService),
+    crlDAO: () => Promise.resolve(crlDAO as unknown as import('@chord-dht-tracker/backend-data/dao').CrlDAO),
     config,
   });
-  return { service, nodeDAO, vnodeDAO, certService, vnodeService };
+  return { service, nodeDAO, vnodeDAO, certService, vnodeService, crlDAO };
 }
 
 beforeEach(() => {
@@ -348,5 +354,73 @@ describe('NodeService heartbeats', () => {
 
     await expect(service.heartbeat('bad', {})).rejects.toThrow(BadRequestError);
     await expect(service.heartbeat(VNODE, {})).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe('NodeService heartbeat CRL piggyback', () => {
+  const CRL_JSON = JSON.stringify({
+    version: 3,
+    updated_at: 1780000000,
+    revoked_node_ids: ['c'.repeat(40)],
+    signature: 'sig',
+  });
+
+  it('reports crl_version 0 with no payload when no CRL is stored', async () => {
+    const { service, nodeDAO, crlDAO } = setup();
+    nodeDAO.heartbeatAnchor.mockResolvedValue(1);
+
+    const result = await service.heartbeat(ANCHOR, { status: 'ACTIVE', crl_version: 0 });
+
+    expect(result.crl_version).toBe(0);
+    expect(result.crl).toBeUndefined();
+    expect(crlDAO.getLatest).not.toHaveBeenCalled();
+  });
+
+  it('omits the inline payload when the request carries no crl_version', async () => {
+    const { service, nodeDAO, crlDAO } = setup();
+    nodeDAO.heartbeatAnchor.mockResolvedValue(1);
+    crlDAO.getLatestVersion.mockResolvedValue(3);
+
+    const result = await service.heartbeat(ANCHOR, { status: 'ACTIVE' });
+
+    expect(result.crl_version).toBe(3);
+    expect(result.crl).toBeUndefined();
+    expect(crlDAO.getLatest).not.toHaveBeenCalled();
+  });
+
+  it('inlines the CRL when the client version is stale', async () => {
+    const { service, nodeDAO, crlDAO } = setup();
+    nodeDAO.heartbeatAnchor.mockResolvedValue(1);
+    crlDAO.getLatestVersion.mockResolvedValue(3);
+    crlDAO.getLatest.mockResolvedValue(CRL_JSON);
+
+    const result = await service.heartbeat(ANCHOR, { status: 'ACTIVE', crl_version: 1 });
+
+    expect(result.crl_version).toBe(3);
+    expect(result.crl).toEqual(JSON.parse(CRL_JSON));
+  });
+
+  it('omits the inline payload when the client is up to date', async () => {
+    const { service, nodeDAO, crlDAO } = setup();
+    nodeDAO.heartbeatAnchor.mockResolvedValue(1);
+    crlDAO.getLatestVersion.mockResolvedValue(3);
+
+    const result = await service.heartbeat(ANCHOR, { status: 'ACTIVE', crl_version: 3 });
+
+    expect(result.crl_version).toBe(3);
+    expect(result.crl).toBeUndefined();
+    expect(crlDAO.getLatest).not.toHaveBeenCalled();
+  });
+
+  it('still acknowledges the heartbeat when the CRL lookup fails', async () => {
+    const { service, nodeDAO, crlDAO } = setup();
+    nodeDAO.heartbeatAnchor.mockResolvedValue(1);
+    crlDAO.getLatestVersion.mockRejectedValue(new Error('D1 unavailable'));
+
+    const result = await service.heartbeat(ANCHOR, { status: 'ACTIVE', crl_version: 0 });
+
+    expect(result.acknowledged).toBe(true);
+    expect(result.crl_version).toBeUndefined();
+    expect(result.crl).toBeUndefined();
   });
 });

@@ -76,6 +76,7 @@ function createRequestScope(env: RequestScopeEnv): Container {
         vnodeDAO,
         certService: () => Promise.resolve(scope.get(Tokens.CertService)),
         vnodeService: () => Promise.resolve(scope.get(Tokens.VNodeService)),
+        crlDAO,
         config: scope.get(Tokens.AppConfig),
       }),
   );

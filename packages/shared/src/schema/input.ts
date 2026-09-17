@@ -53,6 +53,10 @@ const HeartbeatBodySchema = z.object({
   // Per-entry vnode snapshots are validated by the service (unknown vnodes are
   // reported per-item, not fatal), so the route schema only bounds the batch.
   vnode_heartbeats: z.array(z.unknown()).max(TRACKER_MAX_VNODES_PER_ANCHOR).optional(),
+  // CRL version the client already holds (0 = none). Optional so old clients
+  // and clients with CRL refresh disabled omit it; the tracker then returns
+  // crl_version without the inline payload (opt-in to save bandwidth).
+  crl_version: z.number().int().min(0).optional(),
 });
 
 const RegisterNodeBodySchema = z.object({
