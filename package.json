@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.22.0",
-    "@types/node": "^26.5.0",
+    "@types/node": "^26.5.1",
     "@vitest/coverage-v8": "4.1.10",
     "chanfana": "3.4.0",
     "eslint": "^10.10.0",
