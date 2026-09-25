@@ -47,10 +47,7 @@ class ChordDHTTrackerWorker extends AbstractEntrypointWorker {
     this.registerTrackerRoutes(openapi);
 
     app.get('*', (c) => {
-      if (!AppConfiguration.fromEnv(c.env).isServeSpaFromWorker()) {
-        return c.notFound();
-      }
-      return c.html(SPA_HTML);
+      return AppConfiguration.fromEnv(c.env).isServeSpaFromWorker() ? c.html(SPA_HTML) : c.notFound();
     });
 
     this.app = openapi;

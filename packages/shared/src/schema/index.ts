@@ -8,10 +8,7 @@ const normalizePathname = (pathname: string): string => {
   if (/^\/tracker\/nodes\/[^/]+\/heartbeat$/.test(path)) {
     return '/tracker/nodes/:node_id/heartbeat';
   }
-  if (/^\/tracker\/nodes\/[^/]+$/.test(path)) {
-    return '/tracker/nodes/:node_id';
-  }
-  return path;
+  return /^\/tracker\/nodes\/[^/]+$/.test(path) ? '/tracker/nodes/:node_id' : path;
 };
 
 const getRouteKey = (request: Request): string => {
@@ -52,11 +49,7 @@ const validateRequestInput = async (request: Request, body: unknown) => {
   if (!schema.body) return { success: true as const, data: body };
 
   const bodyResult = await schema.body.safeParseAsync(body);
-  if (!bodyResult.success) {
-    return { success: false as const, error: formatValidationError('body', bodyResult.error), scope: 'body' as const };
-  }
-
-  return { success: true as const, data: bodyResult.data };
+  return bodyResult.success ? { success: true as const, data: bodyResult.data } : { success: false as const, error: formatValidationError('body', bodyResult.error), scope: 'body' as const };
 };
 
 export { getRequestInputSchema, validateRequestInput };

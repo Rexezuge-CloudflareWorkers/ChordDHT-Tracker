@@ -114,10 +114,7 @@ class CertService {
     }
     const host = u.hostname.toLowerCase();
     const port = u.port;
-    if (port === '443' || port === '') {
-      return `https://${host}`;
-    }
-    return `https://${host}:${port}`;
+    return port === '443' || port === '' ? `https://${host}` : `https://${host}:${port}`;
   }
 
   // hashURI returns the hex SHA-1 of the normalized URI, matching Go's HashURI.

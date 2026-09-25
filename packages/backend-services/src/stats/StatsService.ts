@@ -36,8 +36,7 @@ interface StatsServiceDeps {
 
 function normalizeTimestamp(value: string | number | null | undefined, unixSeconds: boolean): string | null {
   if (value == null) return null;
-  if (unixSeconds) return new Date(Number(value) * 1000).toISOString();
-  return String(value);
+  return unixSeconds ? new Date(Number(value) * 1000).toISOString() : String(value);
 }
 
 function normalizeSummary(row: StatsSummaryRow | null, unixSeconds = false): StatsSummary {

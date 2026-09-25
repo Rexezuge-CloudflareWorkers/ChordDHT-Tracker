@@ -61,8 +61,7 @@ class NodeQuery {
     const full = sanitized as TrackerNodeRecord[];
     const withVnodes = await Promise.all(
       full.map(async (n) => {
-        if ((n.vnode_count ?? 0) === 0) return n;
-        return { ...n, vnodes: await vnodeDAO.listByAnchor(n.node_id) };
+        return (n.vnode_count ?? 0) === 0 ? n : { ...n, vnodes: await vnodeDAO.listByAnchor(n.node_id) };
       }),
     );
     if (options.includeVnodes) {

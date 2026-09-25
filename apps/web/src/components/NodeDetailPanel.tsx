@@ -16,10 +16,7 @@ interface Props {
 // the branch here keeps row JSX free of nested ternaries.
 function Masked<T>({ isAdmin, value, format }: { isAdmin: boolean; value: T | null | undefined; format: (value: T) => React.ReactNode }): React.ReactNode {
   if (value === null || value === undefined) {
-    if (isAdmin) {
-      return <NullValue />;
-    }
-    return <RedactedValue />;
+    return isAdmin ? <NullValue /> : <RedactedValue />;
   }
   return <>{format(value)}</>;
 }

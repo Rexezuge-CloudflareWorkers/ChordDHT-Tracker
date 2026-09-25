@@ -16,8 +16,7 @@ const HttpsUriSchema = z
     } catch {
       return false;
     }
-    if (url.protocol !== 'https:') return false;
-    if (url.username || url.password || url.search || url.hash) return false;
+    if ((url.protocol !== 'https:') || url.username || url.password || url.search || url.hash) return false;
     if (url.pathname && url.pathname !== '/') return false;
     return true;
   }, 'uri must be absolute https without userinfo, query, fragment, or path.');
