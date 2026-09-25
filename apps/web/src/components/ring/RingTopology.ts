@@ -40,15 +40,13 @@ export function rttColor(ms: number | undefined | null, alpha = 1): string {
   if (ms == null) return `rgba(99,102,241,${alpha})`;
   if (ms < 20) return `rgba(34,197,94,${alpha})`;
   if (ms < 100) return `rgba(234,179,8,${alpha})`;
-  if (ms < 300) return `rgba(249,115,22,${alpha})`;
-  return `rgba(239,68,68,${alpha})`;
+  return ms < 300 ? `rgba(249,115,22,${alpha})` : `rgba(239,68,68,${alpha})`;
 }
 
 export function avgRTT(samples: Record<string, number> | null | undefined): number | null {
   if (!samples) return null;
   const vals = Object.values(samples);
-  if (vals.length === 0) return null;
-  return vals.reduce((a, b) => a + b, 0) / vals.length;
+  return vals.length === 0 ? null : vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
 export function shrinkToward(
@@ -59,8 +57,7 @@ export function shrinkToward(
   const dx = x2 - x1;
   const dy = y2 - y1;
   const dist = Math.hypot(dx, dy);
-  if (dist < 1) return { x: x2, y: y2 };
-  return { x: x2 - (dx / dist) * shrinkPx, y: y2 - (dy / dist) * shrinkPx };
+  return dist < 1 ? { x: x2, y: y2 } : { x: x2 - (dx / dist) * shrinkPx, y: y2 - (dy / dist) * shrinkPx };
 }
 
 export function lineVis(hoveredId: string | null, sourceId: string, targetId: string, base: number, dim: number): number {
@@ -74,8 +71,7 @@ export function positionForAngle(angle: number): Point {
 
 export function nodePosition(angleMap: Map<string, number>, id: string): Point | null {
   const a = angleMap.get(id);
-  if (a === undefined) return null;
-  return positionForAngle(a);
+  return a === undefined ? null : positionForAngle(a);
 }
 
 export function vnodePosition(vnodeId: string): Point {

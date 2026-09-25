@@ -128,8 +128,7 @@ export function RingCanvas({
 
           {/* ── Layer 2: Primary successor lines (thick, RTT-colored) ── */}
           {visibleLayers.primarySuccessor && nodes.map((node) => {
-            if (!node.successor_id || !nodeIdSet.has(node.successor_id)) return null;
-            if (node.successor_id === node.node_id) return null;
+            if (!node.successor_id || !nodeIdSet.has(node.successor_id) || (node.successor_id === node.node_id)) return null;
             const from = nodePos(node.node_id);
             const to = nodePos(node.successor_id);
             if (!from || !to) return null;

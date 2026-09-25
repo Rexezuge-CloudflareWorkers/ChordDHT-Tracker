@@ -12,15 +12,13 @@ function toGuestVisibleNodes(nodes: TrackerNodeRecord[]): TrackerNodeRecord[] {
 // by default).
 function toAdminVisibleNodes(nodes: TrackerNodeRecord[], nodeTypeFilter: NodeTypeFilter): TrackerNodeRecord[] {
   if (nodeTypeFilter === 'anchors') return nodes.filter((n) => !n.is_vnode);
-  if (nodeTypeFilter === 'vnodes') return nodes.filter((n) => n.is_vnode);
-  return nodes;
+  return nodeTypeFilter === 'vnodes' ? nodes.filter((n) => n.is_vnode) : nodes;
 }
 
 // computeStaleCutoff derives the "last seen" cutoff below which a node renders
 // as stale, from the tracker's own generation timestamp and threshold.
 function computeStaleCutoff(stats: StatsResponse | null): Date | null {
-  if (!stats?.stats_generated_at || !stats?.stale_threshold_seconds) return null;
-  return new Date(new Date(stats.stats_generated_at).getTime() - stats.stale_threshold_seconds * 1000);
+  return !stats?.stats_generated_at || !stats?.stale_threshold_seconds ? null : new Date(new Date(stats.stats_generated_at).getTime() - stats.stale_threshold_seconds * 1000);
 }
 
 export { computeStaleCutoff, toAdminVisibleNodes, toGuestVisibleNodes };

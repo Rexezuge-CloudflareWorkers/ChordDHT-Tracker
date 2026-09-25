@@ -52,10 +52,7 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
       if (statusCode >= 300 && statusCode < 400) {
         return c.body(null);
       }
-      if ('rawBody' in extendedResponse) {
-        return c.body((extendedResponse.rawBody ?? null) as never);
-      }
-      return c.json(extendedResponse.body);
+      return 'rawBody' in extendedResponse ? c.body((extendedResponse.rawBody ?? null) as never) : c.json(extendedResponse.body);
     }
     return c.json(response);
   }
@@ -68,8 +65,7 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
     const raw = this.getQueryParam(request, name);
     if (raw === undefined) return fallback;
     const parsed = Number(raw);
-    if (!Number.isSafeInteger(parsed)) return fallback;
-    return Math.max(min, Math.min(max, parsed));
+    return Number.isSafeInteger(parsed) ? Math.max(min, Math.min(max, parsed)) : fallback;
   }
 
   protected getPathParam(cxt: RouteContext<TEnv>, name: string): string {

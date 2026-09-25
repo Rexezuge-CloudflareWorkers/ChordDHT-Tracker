@@ -80,12 +80,9 @@ class VNodeService {
     let validCount = 0;
     for (const entry of limited) {
       const ve = entry as InlineVNodeEntry;
-      if (typeof ve.vnode_id !== 'string' || !NODE_ID_PATTERN.test(ve.vnode_id)) continue;
-      if (typeof ve.index !== 'number') continue;
+      if (typeof ve.vnode_id !== 'string' || !NODE_ID_PATTERN.test(ve.vnode_id) || (typeof ve.index !== 'number')) continue;
       const proof = ve.proof as VNodeProof | undefined;
-      if (!proof) continue;
-      if (!(await this.deps.crypto.verifyVNodeProof(proof, anchorPubKey))) continue;
-      if (await vnodeDAO.checkCollision(ve.vnode_id, anchorId)) continue;
+      if (!proof || !(await this.deps.crypto.verifyVNodeProof(proof, anchorPubKey)) || (await vnodeDAO.checkCollision(ve.vnode_id, anchorId))) continue;
       await vnodeDAO.upsert({
         vnodeId: ve.vnode_id,
         anchorId,

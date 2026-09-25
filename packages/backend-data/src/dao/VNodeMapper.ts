@@ -58,13 +58,11 @@ function parseNodeJsonColumns(node: TrackerNodeRecord): TrackerNodeRecord {
 
 function parseJSONColumn<T>(value: string | T | null): T | null {
   if (value == null) return null;
-  if (typeof value !== 'string') return value;
-  return JSON.parse(value) as T;
+  return typeof value === 'string' ? (JSON.parse(value) as T) : value;
 }
 
 function unixSecondsToISO(value: number | null | undefined, fallback: string): string {
-  if (typeof value !== 'number') return fallback;
-  return new Date(value * 1000).toISOString();
+  return typeof value === 'number' ? new Date(value * 1000).toISOString() : fallback;
 }
 
 function logicalVNodeFromRow(row: LogicalVNodeRow): TrackerNodeRecord {

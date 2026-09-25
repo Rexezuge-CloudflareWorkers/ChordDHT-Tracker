@@ -96,10 +96,7 @@ function buildCountAnchorsQuery(options: CountAnchorsOptions): { sql: string; bi
   if (status) {
     return { sql: 'SELECT COUNT(*) as count FROM nodes WHERE status = ?', bindings: [status] };
   }
-  if (region) {
-    return { sql: 'SELECT COUNT(*) as count FROM nodes WHERE region = ?', bindings: [region] };
-  }
-  return { sql: COUNT_ALL_SQL, bindings: [] };
+  return region ? { sql: 'SELECT COUNT(*) as count FROM nodes WHERE region = ?', bindings: [region] } : { sql: COUNT_ALL_SQL, bindings: [] };
 }
 
 function buildListSeedsQuery(options: ListSeedsOptions): { sql: string; bindings: Array<string | number> } {
