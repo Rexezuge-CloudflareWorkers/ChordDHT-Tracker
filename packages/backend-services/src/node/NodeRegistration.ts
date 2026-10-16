@@ -149,8 +149,7 @@ class NodeRegistration {
       return { deregistered: true, node_id: nodeId };
     }
     const anchorId = await vnodeDAO.findAnchorIdByVnodeId(nodeId);
-    if (!anchorId) throw new NotFoundError(`Node ${nodeId} not found`);
-    if ((await vnodeDAO.deleteById(nodeId)) === 0) throw new NotFoundError(`Node ${nodeId} not found`);
+    if (!anchorId || ((await vnodeDAO.deleteById(nodeId)) === 0)) throw new NotFoundError(`Node ${nodeId} not found`);
     await nodeDAO.setVnodeCount(anchorId, await vnodeDAO.countByAnchor(anchorId));
     return { deregistered: true, node_id: nodeId };
   }

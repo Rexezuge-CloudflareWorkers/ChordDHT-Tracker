@@ -11,14 +11,14 @@ import {
 } from './ConfigurationDefaults';
 
 /**
- * Injectable instance view over environment configuration.
- *
- * `ConfigurationManager` statics remain as a thin facade delegating here for
- * backward compatibility. New code should accept `AppConfiguration` (or the
- * namespaced groups) via constructor injection so env parsing is stubbable.
- *
- * Each method takes no env — the env is captured at construction time.
- */
+Injectable instance view over environment configuration.
+
+`ConfigurationManager` statics remain as a thin facade delegating here for
+backward compatibility. New code should accept `AppConfiguration` (or the
+namespaced groups) via constructor injection so env parsing is stubbable.
+
+Each method takes no env — the env is captured at construction time.
+*/
 class AppConfiguration {
   constructor(private readonly env: unknown) {}
 

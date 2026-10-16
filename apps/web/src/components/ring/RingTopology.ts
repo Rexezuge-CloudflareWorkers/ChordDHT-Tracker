@@ -1,9 +1,9 @@
 /**
- * Pure layout math for the Chord ring visualization (no React).
- *
- * Maps SHA-1 node IDs to angles/positions on the SVG ring and provides the
- * viewport, color, and geometry helpers shared by the ring components.
- */
+Pure layout math for the Chord ring visualization (no React).
+
+Maps SHA-1 node IDs to angles/positions on the SVG ring and provides the
+viewport, color, and geometry helpers shared by the ring components.
+*/
 import { nodeIdToAngle } from '../../utils';
 
 export const CX = 300;

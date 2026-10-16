@@ -4,10 +4,10 @@ interface Page<T> {
 }
 
 /**
- * Opaque cursor value object. Centralizes the base64(JSON) codec so DAOs
- * stop hand-rolling `encodeCursor/parseCursor` pairs.
- * Works in Workers (btoa/atob) and Node 24 (global btoa/atob).
- */
+Opaque cursor value object. Centralizes the base64(JSON) codec so DAOs
+stop hand-rolling `encodeCursor/parseCursor` pairs.
+Works in Workers (btoa/atob) and Node 24 (global btoa/atob).
+*/
 class Cursor {
   public static encode(value: unknown): string {
     return btoa(JSON.stringify(value));

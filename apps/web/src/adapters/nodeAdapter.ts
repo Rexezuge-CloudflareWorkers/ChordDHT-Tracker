@@ -18,7 +18,7 @@ function toAdminVisibleNodes(nodes: TrackerNodeRecord[], nodeTypeFilter: NodeTyp
 // computeStaleCutoff derives the "last seen" cutoff below which a node renders
 // as stale, from the tracker's own generation timestamp and threshold.
 function computeStaleCutoff(stats: StatsResponse | null): Date | null {
-  return !stats?.stats_generated_at || !stats?.stale_threshold_seconds ? null : new Date(new Date(stats.stats_generated_at).getTime() - stats.stale_threshold_seconds * 1000);
+  return stats?.stats_generated_at && stats.stale_threshold_seconds ? new Date(new Date(stats.stats_generated_at).getTime() - stats.stale_threshold_seconds * 1000) : null;
 }
 
 export { computeStaleCutoff, toAdminVisibleNodes, toGuestVisibleNodes };

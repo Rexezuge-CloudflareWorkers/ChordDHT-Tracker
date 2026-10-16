@@ -4,11 +4,11 @@ import { SystemClock } from '@chord-dht-tracker/shared/utils';
 import type { ServiceEnv } from '../config/ServiceEnv';
 
 /**
- * Single request-scoped context replacing bespoke `*Env`
- * structural subsets previously passed around with `as` casts.
- * Domain services accept this (or a narrower options object derived
- * from it) via constructor injection instead of `new X(env)` per call.
- */
+Single request-scoped context replacing bespoke `*Env`
+structural subsets previously passed around with `as` casts.
+Domain services accept this (or a narrower options object derived
+from it) via constructor injection instead of `new X(env)` per call.
+*/
 interface ServiceContext {
   readonly env: ServiceEnv;
   readonly logger: ILogger;

@@ -1,8 +1,8 @@
 import { ErrorCode, ServiceError } from './IServiceError';
 
 class RateLimitedError extends ServiceError {
-  constructor(message?: string) {
-    super(message ?? 'Rate limit exceeded for this request.');
+  constructor(message = 'Rate limit exceeded for this request.') {
+    super(message);
   }
 
   public getErrorCode(): ErrorCode {

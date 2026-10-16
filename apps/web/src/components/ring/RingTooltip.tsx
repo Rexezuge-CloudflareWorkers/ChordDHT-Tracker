@@ -43,13 +43,13 @@ export function RingNodeTooltip({ node, isAdmin, staleCutoff }: NodeTooltipProps
       <div className="text-gray-500">Successor: {node.successor_id ? truncateNodeId(node.successor_id) : isAdmin ? '—' : '******'}</div>
       <div className="text-gray-500">Predecessor: {node.predecessor_id ? truncateNodeId(node.predecessor_id) : isAdmin ? '—' : '******'}</div>
       <div className="text-gray-500">
-        {succListLen !== null && succListCap !== null
-          ? `Succ list: ${succListLen}/${succListCap}`
-          : succListLen === null
+        {succListLen === null || succListCap === null
+          ? succListLen === null
             ? node.successor_list_size === null
               ? isAdmin ? 'Succ list: —' : ''
               : `Succ list: ${node.successor_list_size}${succListCap ? `/${succListCap}` : ''}`
-            : `Succ list: ${succListLen}`}
+            : `Succ list: ${succListLen}`
+          : `Succ list: ${succListLen}/${succListCap}`}
       </div>
       {avg === null
         ? isAdmin ? <div className="text-gray-500">RTT: —</div> : null
