@@ -1,8 +1,8 @@
 import { ErrorCode, ServiceError } from './IServiceError';
 
 class ConflictError extends ServiceError {
-  constructor(message?: string) {
-    super(message ?? 'The request conflicts with the current state of the resource.');
+  constructor(message = 'The request conflicts with the current state of the resource.') {
+    super(message);
   }
 
   public getErrorCode(): ErrorCode {

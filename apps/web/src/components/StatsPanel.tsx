@@ -6,11 +6,11 @@ interface Props {
   stats: StatsResponse | null;
 }
 
-function StatCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
+function StatCard({ label, value, color = '#f3f4f6' }: { label: string; value: string | number; color?: string }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
       <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-semibold mt-1 tabular-nums" style={{ color: color ?? '#f3f4f6' }}>
+      <p className="text-2xl font-semibold mt-1 tabular-nums" style={{ color }}>
         {value}
       </p>
     </div>

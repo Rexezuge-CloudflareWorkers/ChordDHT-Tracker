@@ -1,8 +1,8 @@
 import { ErrorCode, ServiceError } from './IServiceError';
 
 class ServiceUnavailableError extends ServiceError {
-  constructor(message?: string) {
-    super(message ?? 'The service is temporarily unavailable.');
+  constructor(message = 'The service is temporarily unavailable.') {
+    super(message);
   }
 
   public getErrorCode(): ErrorCode {

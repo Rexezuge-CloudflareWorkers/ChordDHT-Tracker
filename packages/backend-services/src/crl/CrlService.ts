@@ -48,10 +48,7 @@ class CrlService {
 
   public async upload(input: CrlUploadInput): Promise<CrlUploadResult> {
     const { version, updated_at, revoked_node_ids, signature } = input;
-    if (typeof version !== 'number' || typeof updated_at !== 'number' || typeof signature !== 'string') {
-      throw new BadRequestError('CRL must have version, updated_at, revoked_node_ids, and signature fields');
-    }
-    if (!Array.isArray(revoked_node_ids)) {
+    if (typeof version !== 'number' || typeof updated_at !== 'number' || typeof signature !== 'string' || !Array.isArray(revoked_node_ids)) {
       throw new BadRequestError('CRL must have version, updated_at, revoked_node_ids, and signature fields');
     }
     const typedCRL = {

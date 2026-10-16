@@ -6,13 +6,13 @@ type Factory<T> = (container: Container) => T;
 type Token<T = unknown> = (string | symbol) & { readonly __type?: T };
 
 /**
- * Minimal dependency-injection container (Factory + Singleton scopes).
- *
- * Replaces the previous convention of `new XDAO(db)` / `new Service(env)`
- * scattered across call sites. Services declare constructor
- * dependencies on interfaces; composition roots (API worker, cron worker,
- * tests) wire concrete implementations once.
- */
+Minimal dependency-injection container (Factory + Singleton scopes).
+
+Replaces the previous convention of `new XDAO(db)` / `new Service(env)`
+scattered across call sites. Services declare constructor
+dependencies on interfaces; composition roots (API worker, cron worker,
+tests) wire concrete implementations once.
+*/
 class Container {
   private readonly factories = new Map<Token<unknown>, Factory<unknown>>();
   private readonly singletons = new Map<Token<unknown>, unknown>();

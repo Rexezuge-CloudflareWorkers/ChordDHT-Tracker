@@ -57,7 +57,7 @@ export default tseslint.config(
   },
 
   // --- Unicorn: modern JS/TS quality rules ---
-  unicorn.configs['flat/recommended'],
+  unicorn.configs.recommended,
   {
     rules: {
       // Codebase uses ctx, req, res, env, err, util, db, dao, etc. — too invasive to rename
@@ -106,6 +106,13 @@ export default tseslint.config(
       'unicorn/no-array-callback-reference': 'warn',
       // toSorted() is ES2023 and may not be in all tsconfig lib targets
       'unicorn/no-array-sort': 'warn',
+    },
+  },
+  // Vite configs invoke plugin factories (react(), tailwindcss()) at module scope by design
+  {
+    files: ['apps/web/vite.config.ts'],
+    rules: {
+      'unicorn/no-top-level-side-effects': 'off',
     },
   },
 
