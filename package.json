@@ -20,7 +20,7 @@
     "migrate:remote": "wrangler d1 migrations apply chord-dht-tracker-db --remote"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@cloudflare/vitest-pool-workers": "0.23.0",
     "@types/node": "^26.6.4",
     "@vitest/coverage-v8": "4.1.10",
     "chanfana": "3.4.0",
