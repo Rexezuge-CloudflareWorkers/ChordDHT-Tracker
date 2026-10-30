@@ -13,7 +13,7 @@
     "@chord-dht-tracker/backend-runtime": "workspace:*",
     "@chord-dht-tracker/backend-services": "workspace:*",
     "@chord-dht-tracker/shared": "workspace:*",
-    "chanfana": "3.4.0",
+    "chanfana": "3.4.1",
     "hono": "^4.13.13",
     "zod": "4.6.7"
   },
