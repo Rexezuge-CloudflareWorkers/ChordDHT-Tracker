@@ -18,8 +18,8 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(vitest@4.1.10)
       chanfana:
-        specifier: 3.4.1
-        version: 3.4.1
+        specifier: 3.5.0
+        version: 3.5.0
       eslint:
         specifier: ^10.14.0
         version: 10.14.0(jiti@2.7.0)
@@ -96,8 +96,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared
       chanfana:
-        specifier: 3.4.1
-        version: 3.4.1
+        specifier: 3.5.0
+        version: 3.5.0
       hono:
         specifier: ^4.13.17
         version: 4.13.17
@@ -1609,8 +1609,8 @@ packages:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
 
-  chanfana@3.4.1:
-    resolution: {integrity: sha512-VAJQN9TaqxW4wn0s3KGioWdk27iaRsrh5z7+NnAo9T8h+M0dBMJqFxUVaRx4UQPTSM6QY8RM6VS3VsIWEFb+Kw==}
+  chanfana@3.5.0:
+    resolution: {integrity: sha512-L1TSUU6fsT/TlLSFSnqOio7J2AxtZkUBK1/O3bD1V9QLV4xI2ZJEdFv0a1rvOkhFYIbfsUuqu3CbVx6QGECruA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -3726,7 +3726,7 @@ snapshots:
 
   chai@6.2.2: {}
 
-  chanfana@3.4.1:
+  chanfana@3.5.0:
     dependencies:
       '@asteasolutions/zod-to-openapi': 9.1.0(zod@4.6.7)
       js-yaml: 5.5.0
